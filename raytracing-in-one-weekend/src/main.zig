@@ -8,20 +8,27 @@ const dot = vec3.dot;
 const unitVector = vec3.unitVector;
 const Ray = @import("./ray.zig").Ray;
 
-fn hitSphere(center: Point3, radius: f64, r: Ray) bool {
+fn hitSphere(center: Point3, radius: f64, r: Ray) f64 {
     const oc = r.origin().sub(center);
     const a = dot(r.direction(), r.direction());
     const b = 2.0 * dot(oc, r.direction());
     const c = dot(oc, oc) - radius * radius;
     const discriminant = b * b - 4 * a * c;
-    return discriminant > 0;
+    if (discriminant < 0) {
+        return -1.0;
+    } else {
+        return (-b - std.math.sqrt(discriminant)) / (2.0 * a);
+    }
 }
 
 fn rayColor(r: Ray) Color {
-    if (hitSphere(Point3.init(0, 0, -1), 0.5, r))
-        return Color.init(1, 0, 0);
+    var t = hitSphere(Point3.init(0, 0, -1), 0.5, r);
+    if (t > 0.0) {
+        const n = unitVector(r.at(t).sub(Vec3.init(0, 0, -1)));
+        return Color.init(n.x() + 1, n.y() + 1, n.z() + 1).multScalar(0.5);
+    }
     const unit_direction = unitVector(r.direction());
-    const t = 0.5 * (unit_direction.y() + 1.0);
+    t = 0.5 * (unit_direction.y() + 1.0);
     return Color.init(1, 1, 1)
         .multScalar(1.0 - t)
         .add(Color.init(0.5, 0.7, 1.0).multScalar(t));
