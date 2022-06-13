@@ -1,4 +1,6 @@
 const std = @import("std");
+const sqrt = std.math.sqrt;
+
 const writeColor = @import("./color.zig").writeColor;
 const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
@@ -6,18 +8,20 @@ const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
 const dot = vec3.dot;
 const unitVector = vec3.unitVector;
+
 const Ray = @import("./ray.zig").Ray;
 
 fn hitSphere(center: Point3, radius: f64, r: Ray) f64 {
     const oc = r.origin().sub(center);
-    const a = dot(r.direction(), r.direction());
-    const b = 2.0 * dot(oc, r.direction());
-    const c = dot(oc, oc) - radius * radius;
-    const discriminant = b * b - 4 * a * c;
+    const a = r.direction().lengthSquared();
+    const half_b = dot(oc, r.direction());
+    const c = oc.lengthSquared() - radius * radius;
+    const discriminant = half_b * half_b - a * c;
+
     if (discriminant < 0) {
         return -1.0;
     } else {
-        return (-b - std.math.sqrt(discriminant)) / (2.0 * a);
+        return (-half_b - std.math.sqrt(discriminant)) / a;
     }
 }
 
