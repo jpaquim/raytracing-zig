@@ -85,7 +85,7 @@ pub const Vec3 = struct {
 pub const Point3 = Vec3;
 pub const Color = Vec3;
 
-pub fn dot(u: Vec3, v: Vec3) Vec3 {
+pub fn dot(u: Vec3, v: Vec3) f64 {
     return u.e[0] * v.e[0] + u.e[1] * v.e[1] + u.e[2] * v.e[2];
 }
 
