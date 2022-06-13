@@ -73,34 +73,30 @@ pub const Vec3 = struct {
         return Vec3.init(u.e[0] * v.e[0], u.e[1] * v.e[1], u.e[2] * v.e[2]);
     }
 
-    pub fn multScalar(t: f64, u: Vec3) Vec3 {
-        return Vec3.init(t * u.e[0], t * u.e[1], t * u.e[2]);
-    }
-
-    pub fn multScalar2(v: Vec3, t: f64) Vec3 {
-        return multScalar(t, v);
+    pub fn multScalar(v: Vec3, t: f64) Vec3 {
+        return Vec3.init(t * v.e[0], t * v.e[1], t * v.e[2]);
     }
 
     pub fn divScalar(v: Vec3, t: f64) Vec3 {
-        return multScalar(1 / t, v);
-    }
-
-    pub fn dot(u: Vec3, v: Vec3) Vec3 {
-        return u.e[0] * v.e[0] + u.e[1] * v.e[1] + u.e[2] * v.e[2];
-    }
-
-    pub fn cross(u: Vec3, v: Vec3) Vec3 {
-        return Vec3.init(
-            u.e[1] * v.e[2] - u.e[2] * v.e[1],
-            u.e[2] * v.e[0] - u.e[0] * v.e[2],
-            u.e[0] * v.e[1] - u.e[1] * v.e[0],
-        );
-    }
-
-    pub fn unitVector(v: Vec3) Vec3 {
-        return v / v.length();
+        return v.multScalar(1 / t);
     }
 };
 
 pub const Point3 = Vec3;
 pub const Color = Vec3;
+
+pub fn dot(u: Vec3, v: Vec3) Vec3 {
+    return u.e[0] * v.e[0] + u.e[1] * v.e[1] + u.e[2] * v.e[2];
+}
+
+pub fn cross(u: Vec3, v: Vec3) Vec3 {
+    return Vec3.init(
+        u.e[1] * v.e[2] - u.e[2] * v.e[1],
+        u.e[2] * v.e[0] - u.e[0] * v.e[2],
+        u.e[0] * v.e[1] - u.e[1] * v.e[0],
+    );
+}
+
+pub fn unitVector(v: Vec3) Vec3 {
+    return v.divScalar(v.length());
+}
