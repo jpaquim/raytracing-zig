@@ -87,6 +87,9 @@ pub fn main() anyerror!void {
         var s = try allocator.create(Sphere);
         s.* = Sphere.init(Point3.init(-1, 0, -1), 0.5, &m.material);
         try world.add(&s.hittable);
+        var s2 = try allocator.create(Sphere);
+        s2.* = Sphere.init(Point3.init(-1, 0, -1), -0.4, &m.material);
+        try world.add(&s2.hittable);
     }
     {
         var m = try allocator.create(Metal);
