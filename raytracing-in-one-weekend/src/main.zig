@@ -100,7 +100,13 @@ pub fn main() anyerror!void {
         try world.add(&s.hittable);
     }
 
-    const cam = Camera.init(Point3.init(-2, 2, 1), Point3.init(0, 0, -1), Vec3.init(0, 1, 0), 90, aspect_ratio);
+    const lookfrom = Point3.init(3, 3, 2);
+    const lookat = Point3.init(0, 0, -1);
+    const vup = Vec3.init(0, 1, 0);
+    const dist_to_focus = lookfrom.sub(lookat).length();
+    const aperture = 2.0;
+
+    const cam = Camera.init(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
 
     const stdout = std.io.getStdOut().writer();
     const stderr = std.io.getStdErr().writer();

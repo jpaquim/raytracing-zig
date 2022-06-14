@@ -148,3 +148,11 @@ pub fn refract(uv: Vec3, n: Vec3, etai_over_etat: f64) Vec3 {
     const r_out_parallel = n.multScalar(-sqrt(@fabs(1.0 - r_out_perp.lengthSquared())));
     return r_out_perp.add(r_out_parallel);
 }
+
+pub fn randomInUnitDisk() Vec3 {
+    while (true) {
+        const p = Vec3.init(randomDouble2(-1, 1), randomDouble2(-1, 1), 0);
+        if (p.lengthSquared() >= 1) continue;
+        return p;
+    }
+}
