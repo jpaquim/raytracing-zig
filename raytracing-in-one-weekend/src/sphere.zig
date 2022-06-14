@@ -4,6 +4,7 @@ const sqrt = std.math.sqrt;
 const h = @import("./hittable.zig");
 const Hittable = h.Hittable;
 const HitRecord = h.HitRecord;
+const Material = @import("./material.zig").Material;
 const Ray = @import("./ray.zig").Ray;
 
 const vec3 = @import("./vec3.zig");
@@ -16,12 +17,14 @@ pub const Sphere = struct {
 
     center: Point3,
     radius: f64,
+    mat_ptr: *Material,
 
-    pub fn init(cen: Point3, r: f64) Sphere {
+    pub fn init(cen: Point3, r: f64, m: *Material) Sphere {
         return .{
             .hittable = .{ .hitFn = hit },
             .center = cen,
             .radius = r,
+            .mat_ptr = m,
         };
     }
 
@@ -51,6 +54,7 @@ pub const Sphere = struct {
         rec.normal = rec.p.sub(self.center).divScalar(self.radius);
         const outward_normal = rec.p.sub(self.center).divScalar(self.radius);
         rec.setFaceNormal(r, outward_normal);
+        rec.mat_ptr = self.mat_ptr;
 
         return true;
     }

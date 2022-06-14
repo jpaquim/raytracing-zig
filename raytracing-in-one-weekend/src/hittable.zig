@@ -1,3 +1,4 @@
+const Material = @import("./material.zig").Material;
 const Ray = @import("./ray.zig").Ray;
 const vec3 = @import("./vec3.zig");
 const Point3 = vec3.Point3;
@@ -7,6 +8,7 @@ const dot = vec3.dot;
 pub const HitRecord = struct {
     p: Point3,
     normal: Vec3,
+    mat_ptr: *Material,
     t: f64,
 
     front_face: bool,

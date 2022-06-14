@@ -60,6 +60,11 @@ pub const Vec3 = struct {
         return self.e[0] * self.e[0] + self.e[1] * self.e[1] + self.e[2] * self.e[2];
     }
 
+    pub fn nearZero(self: Vec3) bool {
+        const s = 1e-8;
+        return @fabs(self.e[0]) < s and @fabs(self.e[1]) < s and @fabs(self.e[2]) < s;
+    }
+
     pub fn print(out: std.fs.File.Writer, v: Vec3) !void {
         try out.print("{} {} {}", .{ v.e[0], v.e[1], v.e[2] });
     }
@@ -130,4 +135,8 @@ pub fn randomInHemisphere(normal: Vec3) Vec3 {
         return in_unit_sphere
     else
         return in_unit_sphere.negate();
+}
+
+pub fn reflect(v: Vec3, n: Vec3) Vec3 {
+    return v.sub(n.multScalar(2 * dot(v, n)));
 }

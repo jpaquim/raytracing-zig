@@ -8,6 +8,9 @@ const Hittable = hittable.Hittable;
 const HitRecord = hittable.HitRecord;
 
 const HittableList = @import("./hittable_list.zig").HittableList;
+const material = @import("./material.zig");
+const Lambertian = material.Lambertian;
+const Metal = material.Metal;
 const Ray = @import("./ray.zig").Ray;
 const Sphere = @import("./sphere.zig").Sphere;
 
@@ -31,10 +34,15 @@ fn rayColor(r: Ray, world: Hittable, depth: usize) Color {
         return Color.init(0, 0, 0);
 
     if (world.hit(r, 0.001, infinity, &rec)) {
+        var scattered: Ray = undefined;
+        var attenuation: Color = undefined;
+        if (rec.mat_ptr.scatter(r, rec, &attenuation, &scattered))
+            return attenuation.mult(rayColor(scattered, world, depth - 1));
+        return Color.init(0, 0, 0);
         // const target = rec.p.add(rec.normal).add(randomInUnitSphere());
         // const target = rec.p.add(rec.normal).add(randomUnitVector());
-        const target = rec.p.add(randomInHemisphere(rec.normal));
-        return rayColor(Ray.init(rec.p, target.sub(rec.p)), world, depth - 1).multScalar(0.5);
+        // const target = rec.p.add(randomInHemisphere(rec.normal));
+        // return rayColor(Ray.init(rec.p, target.sub(rec.p)), world, depth - 1).multScalar(0.5);
     }
     const unit_direction = unitVector(r.direction());
     const t = 0.5 * (unit_direction.y() + 1.0);
@@ -58,14 +66,33 @@ pub fn main() anyerror!void {
     const max_depth = 50;
 
     var world = HittableList.init(allocator);
+
     {
+        var m = try allocator.create(Lambertian);
+        m.* = Lambertian.init(Color.init(0.8, 0.8, 0.0));
         var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, 0, -1), 0.5);
+        s.* = Sphere.init(Point3.init(0, -100.5, -1), 100.0, &m.material);
         try world.add(&s.hittable);
     }
     {
+        var m = try allocator.create(Lambertian);
+        m.* = Lambertian.init(Color.init(0.7, 0.3, 0.3));
         var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, -100.5, -1), 100);
+        s.* = Sphere.init(Point3.init(0, 0, -1), 0.5, &m.material);
+        try world.add(&s.hittable);
+    }
+    {
+        var m = try allocator.create(Metal);
+        m.* = Metal.init(Color.init(0.8, 0.8, 0.8));
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(-1, 0, -1), 0.5, &m.material);
+        try world.add(&s.hittable);
+    }
+    {
+        var m = try allocator.create(Metal);
+        m.* = Metal.init(Color.init(0.8, 0.6, 0.2));
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(1, 0, -1), 0.5, &m.material);
         try world.add(&s.hittable);
     }
 
