@@ -28,7 +28,7 @@ fn rayColor(r: Ray, world: Hittable, depth: usize) Color {
     if (depth <= 0)
         return Color.init(0, 0, 0);
 
-    if (world.hit(r, 0, infinity, &rec)) {
+    if (world.hit(r, 0.001, infinity, &rec)) {
         const target = rec.p.add(rec.normal).add(randomInUnitSphere());
         return rayColor(Ray.init(rec.p, target.sub(rec.p)), world, depth - 1).multScalar(0.5);
     }
@@ -75,7 +75,7 @@ pub fn main() anyerror!void {
     var j: usize = image_height;
     while (j > 0) {
         j -= 1;
-        try stderr.print("\rScanlines remaining: {}", .{j});
+        try stderr.print("\rScanlines remaining: {d:3}", .{j});
         var i: usize = 0;
         while (i < image_width) : (i += 1) {
             var pixel_color = Color.init(0, 0, 0);
