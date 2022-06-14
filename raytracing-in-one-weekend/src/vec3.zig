@@ -31,11 +31,10 @@ pub const Vec3 = struct {
         return &self.e[index];
     }
 
-    pub fn addMut(self: *Vec3, v: Vec3) Vec3 {
+    pub fn addMut(self: *Vec3, v: Vec3) void {
         self.e[0] += v.e[0];
         self.e[1] += v.e[1];
         self.e[2] += v.e[2];
-        return self.*;
     }
 
     pub fn multScalarMut(self: *Vec3, t: f64) Vec3 {
