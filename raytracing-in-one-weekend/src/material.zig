@@ -11,6 +11,7 @@ const unitVector = vec3.unitVector;
 const randomInUnitSphere = vec3.randomInUnitSphere;
 const randomUnitVector = vec3.randomUnitVector;
 const reflect = vec3.reflect;
+const refract = vec3.refract;
 
 pub const Material = struct {
     scatterFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool,
@@ -65,5 +66,30 @@ pub const Metal = struct {
         scattered.* = Ray.init(rec.p, reflected.add(randomInUnitSphere().multScalar(self.fuzz)));
         attenuation.* = self.albedo;
         return dot(scattered.direction(), rec.normal) > 0;
+    }
+};
+
+pub const Dielectric = struct {
+    material: Material,
+
+    ir: f64,
+
+    pub fn init(index_of_refraction: f64) Dielectric {
+        return .{
+            .material = .{ .scatterFn = scatter },
+            .ir = index_of_refraction,
+        };
+    }
+
+    pub fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
+        const self = @fieldParentPtr(Dielectric, "material", material);
+        attenuation.* = Color.init(1, 1, 1);
+        const refraction_ratio = if (rec.front_face) 1.0 / self.ir else self.ir;
+
+        const unit_direction = unitVector(r_in.direction());
+        const refracted = refract(unit_direction, rec.normal, refraction_ratio);
+
+        scattered.* = Ray.init(rec.p, refracted);
+        return true;
     }
 };

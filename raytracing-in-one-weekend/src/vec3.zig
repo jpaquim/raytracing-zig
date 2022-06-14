@@ -1,4 +1,5 @@
 const std = @import("std");
+const sqrt = std.math.sqrt;
 
 const rtweekend = @import("./rtweekend.zig");
 const randomDouble = rtweekend.randomDouble;
@@ -139,4 +140,11 @@ pub fn randomInHemisphere(normal: Vec3) Vec3 {
 
 pub fn reflect(v: Vec3, n: Vec3) Vec3 {
     return v.sub(n.multScalar(2 * dot(v, n)));
+}
+
+pub fn refract(uv: Vec3, n: Vec3, etai_over_etat: f64) Vec3 {
+    const cos_theta = std.math.min(dot(uv.negate(), n), 1.0);
+    const r_out_perp = uv.add(n.multScalar(cos_theta)).multScalar(etai_over_etat);
+    const r_out_parallel = n.multScalar(-sqrt(@fabs(1.0 - r_out_perp.lengthSquared())));
+    return r_out_perp.add(r_out_parallel);
 }

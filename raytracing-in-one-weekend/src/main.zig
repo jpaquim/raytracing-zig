@@ -9,6 +9,7 @@ const HitRecord = hittable.HitRecord;
 
 const HittableList = @import("./hittable_list.zig").HittableList;
 const material = @import("./material.zig");
+const Dielectric = material.Dielectric;
 const Lambertian = material.Lambertian;
 const Metal = material.Metal;
 const Ray = @import("./ray.zig").Ray;
@@ -74,15 +75,15 @@ pub fn main() anyerror!void {
         try world.add(&s.hittable);
     }
     {
-        var m = try allocator.create(Lambertian);
-        m.* = Lambertian.init(Color.init(0.7, 0.3, 0.3));
+        var m = try allocator.create(Dielectric);
+        m.* = Dielectric.init(1.5);
         var s = try allocator.create(Sphere);
         s.* = Sphere.init(Point3.init(0, 0, -1), 0.5, &m.material);
         try world.add(&s.hittable);
     }
     {
-        var m = try allocator.create(Metal);
-        m.* = Metal.init(Color.init(0.8, 0.8, 0.8), 0.3);
+        var m = try allocator.create(Dielectric);
+        m.* = Dielectric.init(1.5);
         var s = try allocator.create(Sphere);
         s.* = Sphere.init(Point3.init(-1, 0, -1), 0.5, &m.material);
         try world.add(&s.hittable);
