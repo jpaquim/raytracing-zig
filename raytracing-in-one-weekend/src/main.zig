@@ -1,4 +1,5 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
 const Camera = @import("./camera.zig").Camera;
 const writeColor = @import("./color.zig").writeColor;
@@ -11,6 +12,7 @@ const HittableList = @import("./hittable_list.zig").HittableList;
 const material = @import("./material.zig");
 const Dielectric = material.Dielectric;
 const Lambertian = material.Lambertian;
+const Material = material.Material;
 const Metal = material.Metal;
 const Ray = @import("./ray.zig").Ray;
 const Sphere = @import("./sphere.zig").Sphere;
@@ -18,6 +20,7 @@ const Sphere = @import("./sphere.zig").Sphere;
 const rtweekend = @import("./rtweekend.zig");
 const infinity = rtweekend.infinity;
 const randomDouble = rtweekend.randomDouble;
+const randomDouble2 = rtweekend.randomDouble2;
 
 const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
@@ -52,6 +55,83 @@ fn rayColor(r: Ray, world: Hittable, depth: usize) Color {
         .add(Color.init(0.5, 0.7, 1.0).multScalar(t));
 }
 
+fn randomScene(allocator: Allocator) !HittableList {
+    var world = HittableList.init(allocator);
+
+    var ground_material = try allocator.create(Lambertian);
+    ground_material.* = Lambertian.init(Color.init(0.5, 0.5, 0.5));
+    {
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(0, -1000, 0), 1000, &ground_material.material);
+        try world.add(&s.hittable);
+    }
+
+    var a: i32 = -11;
+    while (a < 11) : (a += 1) {
+        var b: i32 = -11;
+        while (b < 11) : (b += 1) {
+            const choose_mat = randomDouble();
+            const center = Point3.init(@intToFloat(f64, a) + 0.9 * randomDouble(), 0.2, @intToFloat(f64, b) + 0.9 * randomDouble());
+
+            if ((center.sub(Point3.init(4, 0.2, 0)).length() > 0.9)) {
+                var sphere_material: *Material = undefined;
+
+                if (choose_mat < 0.8) {
+                    const albedo = Color.random().mult(Color.random());
+                    var m = try allocator.create(Lambertian);
+                    m.* = Lambertian.init(albedo);
+                    sphere_material = &m.material;
+
+                    var s = try allocator.create(Sphere);
+                    s.* = Sphere.init(center, 0.2, sphere_material);
+                    try world.add(&s.hittable);
+                } else if (choose_mat < 0.95) {
+                    const albedo = Color.random2(0.5, 1);
+                    const fuzz = randomDouble2(0, 0.5);
+                    var m = try allocator.create(Metal);
+                    m.* = Metal.init(albedo, fuzz);
+                    sphere_material = &m.material;
+
+                    var s = try allocator.create(Sphere);
+                    s.* = Sphere.init(center, 0.2, sphere_material);
+                    try world.add(&s.hittable);
+                } else {
+                    var m = try allocator.create(Dielectric);
+                    m.* = Dielectric.init(1.5);
+                    sphere_material = &m.material;
+
+                    var s = try allocator.create(Sphere);
+                    s.* = Sphere.init(center, 0.2, sphere_material);
+                    try world.add(&s.hittable);
+                }
+            }
+        }
+    }
+    {
+        var material1 = try allocator.create(Dielectric);
+        material1.* = Dielectric.init(1.5);
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(0, 1, 0), 1.0, &material1.material);
+        try world.add(&s.hittable);
+    }
+    {
+        var material2 = try allocator.create(Lambertian);
+        material2.* = Lambertian.init(Color.init(0.4, 0.2, 0.1));
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(-4, 1, 0), 1.0, &material2.material);
+        try world.add(&s.hittable);
+    }
+    {
+        var material3 = try allocator.create(Metal);
+        material3.* = Metal.init(Color.init(0.7, 0.6, 0.5), 0.0);
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(4, 1, 0), 1.0, &material3.material);
+        try world.add(&s.hittable);
+    }
+
+    return world;
+}
+
 pub fn main() anyerror!void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -60,51 +140,19 @@ pub fn main() anyerror!void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    const aspect_ratio = 16.0 / 9.0;
-    const image_width = 400;
+    const aspect_ratio = 3.0 / 2.0;
+    const image_width = 1200;
     const image_height = @floatToInt(comptime_int, image_width / aspect_ratio);
-    const samples_per_pixel = 100;
+    const samples_per_pixel = 500;
     const max_depth = 50;
 
-    var world = HittableList.init(allocator);
+    const world = try randomScene(allocator);
 
-    {
-        var material_ground = try allocator.create(Lambertian);
-        material_ground.* = Lambertian.init(Color.init(0.8, 0.8, 0));
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, -100.5, -1), 100.0, &material_ground.material);
-        try world.add(&s.hittable);
-    }
-    {
-        var material_center = try allocator.create(Lambertian);
-        material_center.* = Lambertian.init(Color.init(0.1, 0.2, 0.5));
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, 0, -1), 0.5, &material_center.material);
-        try world.add(&s.hittable);
-    }
-    {
-        var material_left = try allocator.create(Dielectric);
-        material_left.* = Dielectric.init(1.5);
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(-1, 0, -1), 0.5, &material_left.material);
-        try world.add(&s.hittable);
-        var s2 = try allocator.create(Sphere);
-        s2.* = Sphere.init(Point3.init(-1, 0, -1), -0.45, &material_left.material);
-        try world.add(&s2.hittable);
-    }
-    {
-        var material_right = try allocator.create(Metal);
-        material_right.* = Metal.init(Color.init(0.8, 0.6, 0.2), 0.0);
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(1, 0, -1), 0.5, &material_right.material);
-        try world.add(&s.hittable);
-    }
-
-    const lookfrom = Point3.init(3, 3, 2);
-    const lookat = Point3.init(0, 0, -1);
+    const lookfrom = Point3.init(13, 2, 3);
+    const lookat = Point3.init(0, 0, 0);
     const vup = Vec3.init(0, 1, 0);
-    const dist_to_focus = lookfrom.sub(lookat).length();
-    const aperture = 2.0;
+    const dist_to_focus = 10.0;
+    const aperture = 0.1;
 
     const cam = Camera.init(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
 
