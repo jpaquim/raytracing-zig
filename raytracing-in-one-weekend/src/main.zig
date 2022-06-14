@@ -66,7 +66,6 @@ pub fn main() anyerror!void {
     const max_depth = 50;
 
     var world = HittableList.init(allocator);
-
     {
         var m = try allocator.create(Lambertian);
         m.* = Lambertian.init(Color.init(0.8, 0.8, 0.0));
@@ -83,14 +82,14 @@ pub fn main() anyerror!void {
     }
     {
         var m = try allocator.create(Metal);
-        m.* = Metal.init(Color.init(0.8, 0.8, 0.8));
+        m.* = Metal.init(Color.init(0.8, 0.8, 0.8), 0.3);
         var s = try allocator.create(Sphere);
         s.* = Sphere.init(Point3.init(-1, 0, -1), 0.5, &m.material);
         try world.add(&s.hittable);
     }
     {
         var m = try allocator.create(Metal);
-        m.* = Metal.init(Color.init(0.8, 0.6, 0.2));
+        m.* = Metal.init(Color.init(0.8, 0.6, 0.2), 1.0);
         var s = try allocator.create(Sphere);
         s.* = Sphere.init(Point3.init(1, 0, -1), 0.5, &m.material);
         try world.add(&s.hittable);
