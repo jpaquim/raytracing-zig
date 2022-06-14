@@ -24,6 +24,10 @@ pub fn randomDouble() f64 {
     return State.rand.float(f64);
 }
 
+pub fn randomDouble2(min: f64, max: f64) f64 {
+    return min + (max - min) * randomDouble();
+}
+
 pub fn clamp(x: f64, min: f64, max: f64) f64 {
     if (x < min) return min;
     if (x > max) return max;

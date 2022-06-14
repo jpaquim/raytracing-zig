@@ -1,5 +1,9 @@
 const std = @import("std");
 
+const rtweekend = @import("./rtweekend.zig");
+const randomDouble = rtweekend.randomDouble;
+const randomDouble2 = rtweekend.randomDouble2;
+
 pub const Vec3 = struct {
     e: [3]f64 = [_]f64{0} ** 3,
 
@@ -79,6 +83,14 @@ pub const Vec3 = struct {
     pub fn divScalar(v: Vec3, t: f64) Vec3 {
         return v.multScalar(1 / t);
     }
+
+    pub fn random() Vec3 {
+        return Vec3.init(randomDouble(), randomDouble(), randomDouble());
+    }
+
+    pub fn random2(min: f64, max: f64) Vec3 {
+        return Vec3.init(randomDouble2(min, max), randomDouble2(min, max), randomDouble2(min, max));
+    }
 };
 
 pub const Point3 = Vec3;
@@ -98,4 +110,12 @@ pub fn cross(u: Vec3, v: Vec3) Vec3 {
 
 pub fn unitVector(v: Vec3) Vec3 {
     return v.divScalar(v.length());
+}
+
+pub fn randomInUnitSphere() Vec3 {
+    while (true) {
+        const p = Vec3.random2(-1, 1);
+        if (p.lengthSquared() >= 1) continue;
+        return p;
+    }
 }
