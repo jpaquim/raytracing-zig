@@ -1,3 +1,6 @@
+const std = @import("std");
+const sqrt = std.math.sqrt;
+
 const hittable = @import("./hittable.zig");
 const Hittable = hittable.Hittable;
 const HitRecord = hittable.HitRecord;
@@ -87,9 +90,17 @@ pub const Dielectric = struct {
         const refraction_ratio = if (rec.front_face) 1.0 / self.ir else self.ir;
 
         const unit_direction = unitVector(r_in.direction());
-        const refracted = refract(unit_direction, rec.normal, refraction_ratio);
+        const cos_theta = std.math.min(dot(unit_direction.negate(), rec.normal), 1.0);
+        const sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
-        scattered.* = Ray.init(rec.p, refracted);
+        const cannot_refract = refraction_ratio * sin_theta > 1.0;
+
+        const direction = if (cannot_refract)
+            reflect(unit_direction, rec.normal)
+        else
+            refract(unit_direction, rec.normal, refraction_ratio);
+
+        scattered.* = Ray.init(rec.p, direction);
         return true;
     }
 };

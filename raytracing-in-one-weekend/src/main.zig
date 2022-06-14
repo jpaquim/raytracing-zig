@@ -75,8 +75,8 @@ pub fn main() anyerror!void {
         try world.add(&s.hittable);
     }
     {
-        var m = try allocator.create(Dielectric);
-        m.* = Dielectric.init(1.5);
+        var m = try allocator.create(Lambertian);
+        m.* = Lambertian.init(Color.init(0.1, 0.2, 0.5));
         var s = try allocator.create(Sphere);
         s.* = Sphere.init(Point3.init(0, 0, -1), 0.5, &m.material);
         try world.add(&s.hittable);
@@ -90,7 +90,7 @@ pub fn main() anyerror!void {
     }
     {
         var m = try allocator.create(Metal);
-        m.* = Metal.init(Color.init(0.8, 0.6, 0.2), 1.0);
+        m.* = Metal.init(Color.init(0.8, 0.6, 0.2), 0.0);
         var s = try allocator.create(Sphere);
         s.* = Sphere.init(Point3.init(1, 0, -1), 0.5, &m.material);
         try world.add(&s.hittable);
