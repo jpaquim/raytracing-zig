@@ -1,7 +1,10 @@
 const std = @import("std");
 
 const Ray = @import("./ray.zig").Ray;
-const degreesToRadians = @import("./rtweekend.zig").degreesToRadians;
+const rtweekend = @import("./rtweekend.zig");
+const degreesToRadians = rtweekend.degreesToRadians;
+const randomDouble2 = rtweekend.randomDouble2;
+
 const vec3 = @import("./vec3.zig");
 const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
@@ -18,6 +21,8 @@ pub const Camera = struct {
     v: Vec3,
     w: Vec3,
     lens_radius: f64,
+    time0: f64,
+    time1: f64,
 
     pub fn init(
         lookfrom: Point3,
@@ -27,6 +32,8 @@ pub const Camera = struct {
         aspect_ratio: f64,
         aperture: f64,
         focus_dist: f64,
+        time0: ?f64,
+        time1: ?f64,
     ) Camera {
         const theta = degreesToRadians(vfov);
         const h = @tan(theta / 2);
@@ -52,6 +59,8 @@ pub const Camera = struct {
             .v = v,
             .w = w,
             .lens_radius = aperture / 2,
+            .time0 = time0 orelse 0.0,
+            .time1 = time1 orelse 0.0,
         };
     }
 
@@ -66,6 +75,7 @@ pub const Camera = struct {
                 .add(self.vertical.multScalar(t))
                 .sub(self.origin)
                 .sub(offset),
+            randomDouble2(self.time0, self.time1),
         );
     }
 };

@@ -14,6 +14,7 @@ const Dielectric = material.Dielectric;
 const Lambertian = material.Lambertian;
 const Material = material.Material;
 const Metal = material.Metal;
+const MovingSphere = @import("./moving_sphere.zig").MovingSphere;
 const Ray = @import("./ray.zig").Ray;
 const Sphere = @import("./sphere.zig").Sphere;
 
@@ -82,8 +83,9 @@ fn randomScene(allocator: Allocator) !HittableList {
                     m.* = Lambertian.init(albedo);
                     sphere_material = &m.material;
 
-                    var s = try allocator.create(Sphere);
-                    s.* = Sphere.init(center, 0.2, sphere_material);
+                    const center2 = center.add(Vec3.init(0, randomDouble2(0, 0.5), 0));
+                    var s = try allocator.create(MovingSphere);
+                    s.* = MovingSphere.init(center, center2, 0.0, 1.0, 0.2, sphere_material);
                     try world.add(&s.hittable);
                 } else if (choose_mat < 0.95) {
                     const albedo = Color.random2(0.5, 1);
@@ -140,10 +142,9 @@ pub fn main() anyerror!void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    const aspect_ratio = 3.0 / 2.0;
-    const image_width = 1200;
-    const image_height = @floatToInt(comptime_int, image_width / aspect_ratio);
-    const samples_per_pixel = 500;
+    const aspect_ratio = 16.0 / 9.0;
+    const image_width = 400;
+    const samples_per_pixel = 100;
     const max_depth = 50;
 
     const world = try randomScene(allocator);
@@ -153,8 +154,9 @@ pub fn main() anyerror!void {
     const vup = Vec3.init(0, 1, 0);
     const dist_to_focus = 10.0;
     const aperture = 0.1;
+    const image_height = @floatToInt(comptime_int, image_width / aspect_ratio);
 
-    const cam = Camera.init(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
+    const cam = Camera.init(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 
     const stdout = std.io.getStdOut().writer();
     const stderr = std.io.getStdErr().writer();

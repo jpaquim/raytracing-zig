@@ -42,13 +42,12 @@ pub const Lambertian = struct {
     }
 
     pub fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
-        _ = r_in;
         const self = @fieldParentPtr(Lambertian, "material", material);
         var scatter_direction = rec.normal.add(randomUnitVector());
         if (scatter_direction.nearZero())
             scatter_direction = rec.normal;
 
-        scattered.* = Ray.init(rec.p, scatter_direction);
+        scattered.* = Ray.init(rec.p, scatter_direction, r_in.time());
         attenuation.* = self.albedo;
         return true;
     }
@@ -71,7 +70,7 @@ pub const Metal = struct {
     pub fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
         const self = @fieldParentPtr(Metal, "material", material);
         const reflected = reflect(unitVector(r_in.direction()), rec.normal);
-        scattered.* = Ray.init(rec.p, reflected.add(randomInUnitSphere().multScalar(self.fuzz)));
+        scattered.* = Ray.init(rec.p, reflected.add(randomInUnitSphere().multScalar(self.fuzz)), r_in.time());
         attenuation.* = self.albedo;
         return dot(scattered.direction(), rec.normal) > 0;
     }
@@ -105,7 +104,7 @@ pub const Dielectric = struct {
         else
             refract(unit_direction, rec.normal, refraction_ratio);
 
-        scattered.* = Ray.init(rec.p, direction);
+        scattered.* = Ray.init(rec.p, direction, r_in.time());
         return true;
     }
 
