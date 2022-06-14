@@ -17,7 +17,6 @@ const Sphere = @import("./sphere.zig").Sphere;
 
 const rtweekend = @import("./rtweekend.zig");
 const infinity = rtweekend.infinity;
-const pi = rtweekend.pi;
 const randomDouble = rtweekend.randomDouble;
 
 const vec3 = @import("./vec3.zig");
@@ -69,24 +68,39 @@ pub fn main() anyerror!void {
 
     var world = HittableList.init(allocator);
 
-    const R = @cos(pi / 4.0);
-
     {
-        var m = try allocator.create(Lambertian);
-        m.* = Lambertian.init(Color.init(0, 0, 1));
+        var material_ground = try allocator.create(Lambertian);
+        material_ground.* = Lambertian.init(Color.init(0.8, 0.8, 0));
         var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(-R, 0, -1), R, &m.material);
+        s.* = Sphere.init(Point3.init(0, -100.5, -1), 100.0, &material_ground.material);
         try world.add(&s.hittable);
     }
     {
-        var m = try allocator.create(Lambertian);
-        m.* = Lambertian.init(Color.init(1, 0, 0));
+        var material_center = try allocator.create(Lambertian);
+        material_center.* = Lambertian.init(Color.init(0.1, 0.2, 0.5));
         var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(R, 0, -1), R, &m.material);
+        s.* = Sphere.init(Point3.init(0, 0, -1), 0.5, &material_center.material);
+        try world.add(&s.hittable);
+    }
+    {
+        var material_left = try allocator.create(Dielectric);
+        material_left.* = Dielectric.init(1.5);
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(-1, 0, -1), 0.5, &material_left.material);
+        try world.add(&s.hittable);
+        var s2 = try allocator.create(Sphere);
+        s2.* = Sphere.init(Point3.init(-1, 0, -1), -0.45, &material_left.material);
+        try world.add(&s2.hittable);
+    }
+    {
+        var material_right = try allocator.create(Metal);
+        material_right.* = Metal.init(Color.init(0.8, 0.6, 0.2), 0.0);
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(1, 0, -1), 0.5, &material_right.material);
         try world.add(&s.hittable);
     }
 
-    const cam = Camera.init(90, aspect_ratio);
+    const cam = Camera.init(Point3.init(-2, 2, 1), Point3.init(0, 0, -1), Vec3.init(0, 1, 0), 90, aspect_ratio);
 
     const stdout = std.io.getStdOut().writer();
     const stderr = std.io.getStdErr().writer();
