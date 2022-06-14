@@ -1,4 +1,7 @@
+const std = @import("std");
+
 const Ray = @import("./ray.zig").Ray;
+const degreesToRadians = @import("./rtweekend.zig").degreesToRadians;
 const vec3 = @import("./vec3.zig");
 const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
@@ -9,10 +12,12 @@ pub const Camera = struct {
     horizontal: Vec3,
     vertical: Vec3,
 
-    pub fn init() Camera {
-        const aspect_ratio = 16.0 / 9.0;
-        const viewport_height = 2.0;
+    pub fn init(vfov: f64, aspect_ratio: f64) Camera {
+        const theta = degreesToRadians(vfov);
+        const h = @tan(theta / 2);
+        const viewport_height = 2.0 * h;
         const viewport_width = aspect_ratio * viewport_height;
+
         const focal_length = 1.0;
 
         const origin = Point3.init(0, 0, 0);
