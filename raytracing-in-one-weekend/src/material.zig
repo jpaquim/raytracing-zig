@@ -1,10 +1,15 @@
 const std = @import("std");
+const min = std.math.min;
+const pow = std.math.pow;
 const sqrt = std.math.sqrt;
 
 const hittable = @import("./hittable.zig");
 const Hittable = hittable.Hittable;
 const HitRecord = hittable.HitRecord;
 const Ray = @import("./ray.zig").Ray;
+const rtweekend = @import("./rtweekend.zig");
+const randomDouble = rtweekend.randomDouble;
+
 const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
 const Point3 = vec3.Point3;
@@ -90,17 +95,23 @@ pub const Dielectric = struct {
         const refraction_ratio = if (rec.front_face) 1.0 / self.ir else self.ir;
 
         const unit_direction = unitVector(r_in.direction());
-        const cos_theta = std.math.min(dot(unit_direction.negate(), rec.normal), 1.0);
+        const cos_theta = min(dot(unit_direction.negate(), rec.normal), 1.0);
         const sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
         const cannot_refract = refraction_ratio * sin_theta > 1.0;
 
-        const direction = if (cannot_refract)
+        const direction = if (cannot_refract or reflectance(cos_theta, refraction_ratio) > randomDouble())
             reflect(unit_direction, rec.normal)
         else
             refract(unit_direction, rec.normal, refraction_ratio);
 
         scattered.* = Ray.init(rec.p, direction);
         return true;
+    }
+
+    fn reflectance(cosine: f64, ref_idx: f64) f64 {
+        var r0 = (1 - ref_idx) / (1 + ref_idx);
+        r0 = r0 * r0;
+        return r0 + (1 - r0) * pow(f64, 1 - cosine, 5);
     }
 };
