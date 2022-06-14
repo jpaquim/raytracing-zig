@@ -1,47 +1,58 @@
 const std = @import("std");
-const sqrt = std.math.sqrt;
 
 const writeColor = @import("./color.zig").writeColor;
+
+const hittable = @import("./hittable.zig");
+const Hittable = hittable.Hittable;
+const HitRecord = hittable.HitRecord;
+
+const HittableList = @import("./hittable_list.zig").HittableList;
+const Ray = @import("./ray.zig").Ray;
+const Sphere = @import("./sphere.zig").Sphere;
+const infinity = @import("./rtweekend.zig").infinity;
+
 const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
 const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
-const dot = vec3.dot;
 const unitVector = vec3.unitVector;
 
-const Ray = @import("./ray.zig").Ray;
-
-fn hitSphere(center: Point3, radius: f64, r: Ray) f64 {
-    const oc = r.origin().sub(center);
-    const a = r.direction().lengthSquared();
-    const half_b = dot(oc, r.direction());
-    const c = oc.lengthSquared() - radius * radius;
-    const discriminant = half_b * half_b - a * c;
-
-    if (discriminant < 0) {
-        return -1.0;
-    } else {
-        return (-half_b - std.math.sqrt(discriminant)) / a;
-    }
-}
-
-fn rayColor(r: Ray) Color {
-    var t = hitSphere(Point3.init(0, 0, -1), 0.5, r);
-    if (t > 0.0) {
-        const n = unitVector(r.at(t).sub(Vec3.init(0, 0, -1)));
-        return Color.init(n.x() + 1, n.y() + 1, n.z() + 1).multScalar(0.5);
+fn rayColor(r: Ray, world: Hittable) Color {
+    var rec: HitRecord = undefined;
+    if (world.hit(r, 0, infinity, &rec)) {
+        return rec.normal.add(Color.init(1, 1, 1)).multScalar(0.5);
     }
     const unit_direction = unitVector(r.direction());
-    t = 0.5 * (unit_direction.y() + 1.0);
+    const t = 0.5 * (unit_direction.y() + 1.0);
     return Color.init(1, 1, 1)
         .multScalar(1.0 - t)
         .add(Color.init(0.5, 0.7, 1.0).multScalar(t));
 }
 
 pub fn main() anyerror!void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    // const allocator = gpa.allocator();
+    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
     const aspect_ratio = 16.0 / 9.0;
     const image_width = 400;
     const image_height = @floatToInt(comptime_int, image_width / aspect_ratio);
+
+    var world = HittableList.init(allocator);
+
+    {
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(0, 0, -1), 0.5);
+        try world.add(&s.hittable);
+    }
+    {
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(0, -100.5, -1), 100);
+        try world.add(&s.hittable);
+    }
 
     const viewport_height = 2.0;
     const viewport_width = aspect_ratio * viewport_height;
@@ -75,7 +86,7 @@ pub fn main() anyerror!void {
                     .add(vertical.multScalar(v))
                     .sub(origin),
             );
-            const pixel_color = rayColor(r);
+            const pixel_color = rayColor(r, world.hittable);
             try writeColor(stdout, pixel_color);
         }
     }
