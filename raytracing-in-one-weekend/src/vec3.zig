@@ -123,3 +123,11 @@ pub fn randomInUnitSphere() Vec3 {
 pub fn randomUnitVector() Vec3 {
     return unitVector(randomInUnitSphere());
 }
+
+pub fn randomInHemisphere(normal: Vec3) Vec3 {
+    const in_unit_sphere = randomInUnitSphere();
+    if (dot(in_unit_sphere, normal) > 0.0)
+        return in_unit_sphere
+    else
+        return in_unit_sphere.negate();
+}
