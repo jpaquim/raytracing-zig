@@ -22,11 +22,15 @@ const Vec3 = vec3.Vec3;
 const randomInUnitSphere = vec3.randomInUnitSphere;
 const unitVector = vec3.unitVector;
 
-fn rayColor(r: Ray, world: Hittable) Color {
+fn rayColor(r: Ray, world: Hittable, depth: usize) Color {
     var rec: HitRecord = undefined;
+
+    if (depth <= 0)
+        return Color.init(0, 0, 0);
+
     if (world.hit(r, 0, infinity, &rec)) {
         const target = rec.p.add(rec.normal).add(randomInUnitSphere());
-        return rayColor(Ray.init(rec.p, target.sub(rec.p)), world).multScalar(0.5);
+        return rayColor(Ray.init(rec.p, target.sub(rec.p)), world, depth - 1).multScalar(0.5);
     }
     const unit_direction = unitVector(r.direction());
     const t = 0.5 * (unit_direction.y() + 1.0);
@@ -47,6 +51,7 @@ pub fn main() anyerror!void {
     const image_width = 400;
     const image_height = @floatToInt(comptime_int, image_width / aspect_ratio);
     const samples_per_pixel = 100;
+    const max_depth = 50;
 
     var world = HittableList.init(allocator);
     {
@@ -79,7 +84,7 @@ pub fn main() anyerror!void {
                 const u = (@intToFloat(f64, i) + randomDouble()) / (image_width - 1);
                 const v = (@intToFloat(f64, j) + randomDouble()) / (image_height - 1);
                 const r = cam.getRay(u, v);
-                pixel_color.addMut(rayColor(r, world.hittable));
+                pixel_color.addMut(rayColor(r, world.hittable, max_depth));
             }
             try writeColor(stdout, pixel_color, samples_per_pixel);
         }
