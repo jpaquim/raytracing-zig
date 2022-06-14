@@ -33,3 +33,7 @@ pub fn clamp(x: f64, min: f64, max: f64) f64 {
     if (x > max) return max;
     return x;
 }
+
+pub fn randomInt(min: i32, max: i32) i32 {
+    return @floatToInt(i32, randomDouble2(@intToFloat(f64, min), @intToFloat(f64, max + 1)));
+}

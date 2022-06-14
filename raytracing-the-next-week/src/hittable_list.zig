@@ -1,10 +1,16 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const aabb = @import("./aabb.zig");
+const AABB = aabb.AABB;
+const surroundingBox = aabb.surroundingBox;
+
 const h = @import("./hittable.zig");
 const Hittable = h.Hittable;
 const HitRecord = h.HitRecord;
+
 const Ray = @import("./ray.zig").Ray;
+
 const vec3 = @import("./vec3.zig");
 const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
@@ -18,7 +24,7 @@ pub const HittableList = struct {
 
     pub fn init(allocator: Allocator) HittableList {
         return .{
-            .hittable = .{ .hitFn = hit },
+            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox },
             .objects = std.ArrayList(*Hittable).init(allocator),
         };
     }
@@ -47,5 +53,21 @@ pub const HittableList = struct {
         }
 
         return hit_anything;
+    }
+
+    fn boundingBox(hittable: *const Hittable, time0: f64, time1: f64, output_box: *AABB) bool {
+        const self = @fieldParentPtr(HittableList, "hittable", hittable);
+        if (self.objects.items.len == 0) return false;
+
+        var temp_box: AABB = undefined;
+        var first_box = true;
+
+        for (self.objects.items) |object| {
+            if (!object.boundingBox(time0, time1, &temp_box)) return false;
+            output_box.* = if (first_box) temp_box else surroundingBox(output_box.*, temp_box);
+            first_box = false;
+        }
+
+        return true;
     }
 };

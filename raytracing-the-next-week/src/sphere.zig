@@ -1,6 +1,7 @@
 const std = @import("std");
 const sqrt = std.math.sqrt;
 
+const AABB = @import("./aabb.zig").AABB;
 const h = @import("./hittable.zig");
 const Hittable = h.Hittable;
 const HitRecord = h.HitRecord;
@@ -21,7 +22,7 @@ pub const Sphere = struct {
 
     pub fn init(cen: Point3, r: f64, m: *Material) Sphere {
         return .{
-            .hittable = .{ .hitFn = hit },
+            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox },
             .center = cen,
             .radius = r,
             .mat_ptr = m,
@@ -56,6 +57,17 @@ pub const Sphere = struct {
         rec.setFaceNormal(r, outward_normal);
         rec.mat_ptr = self.mat_ptr;
 
+        return true;
+    }
+
+    fn boundingBox(hittable: *const Hittable, time0: f64, time1: f64, output_box: *AABB) bool {
+        _ = time0;
+        _ = time1;
+        const self = @fieldParentPtr(Sphere, "hittable", hittable);
+        output_box.* = AABB.init(
+            self.center.sub(Vec3.init(self.radius, self.radius, self.radius)),
+            self.center.add(Vec3.init(self.radius, self.radius, self.radius)),
+        );
         return true;
     }
 };

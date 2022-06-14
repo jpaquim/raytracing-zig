@@ -1,9 +1,14 @@
 const std = @import("std");
 const sqrt = std.math.sqrt;
 
+const aabb = @import("./aabb.zig");
+const AABB = aabb.AABB;
+const surroundingBox = aabb.surroundingBox;
+
 const h = @import("./hittable.zig");
 const Hittable = h.Hittable;
 const HitRecord = h.HitRecord;
+
 const Material = @import("./material.zig").Material;
 const Ray = @import("./ray.zig").Ray;
 
@@ -24,7 +29,7 @@ pub const MovingSphere = struct {
 
     pub fn init(cen0: Point3, cen1: Point3, time0: f64, time1: f64, r: f64, m: *Material) MovingSphere {
         return .{
-            .hittable = .{ .hitFn = hit },
+            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox },
             .center0 = cen0,
             .center1 = cen1,
             .time0 = time0,
@@ -68,5 +73,19 @@ pub const MovingSphere = struct {
     pub fn center(self: MovingSphere, time: f64) Point3 {
         return self.center0
             .add(self.center1.sub(self.center0).multScalar((time - self.time0) / (self.time1 - self.time0)));
+    }
+
+    fn boundingBox(hittable: *const Hittable, time0: f64, time1: f64, output_box: *AABB) bool {
+        const self = @fieldParentPtr(MovingSphere, "hittable", hittable);
+        const box0 = AABB.init(
+            self.center(time0).sub(Vec3.init(self.radius, self.radius, self.radius)),
+            self.center(time0).add(Vec3.init(self.radius, self.radius, self.radius)),
+        );
+        const box1 = AABB.init(
+            self.center(time1).sub(Vec3.init(self.radius, self.radius, self.radius)),
+            self.center(time1).add(Vec3.init(self.radius, self.radius, self.radius)),
+        );
+        output_box.* = surroundingBox(box0, box1);
+        return true;
     }
 };

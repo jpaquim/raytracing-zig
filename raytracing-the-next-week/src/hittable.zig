@@ -1,3 +1,4 @@
+const AABB = @import("./aabb.zig").AABB;
 const Material = @import("./material.zig").Material;
 const Ray = @import("./ray.zig").Ray;
 const vec3 = @import("./vec3.zig");
@@ -21,8 +22,13 @@ pub const HitRecord = struct {
 
 pub const Hittable = struct {
     hitFn: fn (self: *const Hittable, r: Ray, t_min: f64, t_max: f64, rec: *HitRecord) bool,
+    boundingBoxFn: fn (self: *const Hittable, time0: f64, time1: f64, output_box: *AABB) bool,
 
     pub fn hit(self: *const Hittable, r: Ray, t_min: f64, t_max: f64, rec: *HitRecord) bool {
         return self.hitFn(self, r, t_min, t_max, rec);
+    }
+
+    pub fn boundingBox(self: *const Hittable, time0: f64, time1: f64, output_box: *AABB) bool {
+        return self.boundingBoxFn(self, time0, time1, output_box);
     }
 };
