@@ -19,7 +19,7 @@ const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
 const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
-const randomInUnitSphere = vec3.randomInUnitSphere;
+const randomUnitVector = vec3.randomUnitVector;
 const unitVector = vec3.unitVector;
 
 fn rayColor(r: Ray, world: Hittable, depth: usize) Color {
@@ -29,7 +29,7 @@ fn rayColor(r: Ray, world: Hittable, depth: usize) Color {
         return Color.init(0, 0, 0);
 
     if (world.hit(r, 0.001, infinity, &rec)) {
-        const target = rec.p.add(rec.normal).add(randomInUnitSphere());
+        const target = rec.p.add(rec.normal).add(randomUnitVector());
         return rayColor(Ray.init(rec.p, target.sub(rec.p)), world, depth - 1).multScalar(0.5);
     }
     const unit_direction = unitVector(r.direction());

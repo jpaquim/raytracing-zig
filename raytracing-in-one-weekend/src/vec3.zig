@@ -119,3 +119,7 @@ pub fn randomInUnitSphere() Vec3 {
         return p;
     }
 }
+
+pub fn randomUnitVector() Vec3 {
+    return unitVector(randomInUnitSphere());
+}
