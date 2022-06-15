@@ -37,11 +37,27 @@ pub const Perlin = struct {
     }
 
     pub fn noise(self: Perlin, p: Point3) f64 {
-        const i = @floatToInt(i32, 4 * p.x()) & 255;
-        const j = @floatToInt(i32, 4 * p.y()) & 255;
-        const k = @floatToInt(i32, 4 * p.z()) & 255;
+        const u = p.x() - @floor(p.x());
+        const v = p.y() - @floor(p.y());
+        const w = p.z() - @floor(p.z());
 
-        return self.ranfloat[@intCast(usize, self.perm_x[@intCast(usize, i)] ^ self.perm_y[@intCast(usize, j)] ^ self.perm_z[@intCast(usize, k)])];
+        const i = @floatToInt(i32, @floor(p.x()));
+        const j = @floatToInt(i32, @floor(p.y()));
+        const k = @floatToInt(i32, @floor(p.z()));
+        var c: [2][2][2]f64 = undefined;
+
+        var di: usize = 0;
+        while (di < 2) : (di += 1) {
+            var dj: usize = 0;
+            while (dj < 2) : (dj += 1) {
+                var dk: usize = 0;
+                while (dk < 2) : (dk += 1) {
+                    c[di][dj][dk] = self.ranfloat[@intCast(usize, self.perm_x[(@intCast(usize, i) + di) & 255] ^ self.perm_y[(@intCast(usize, j) + dj) & 255] ^ self.perm_z[(@intCast(usize, k) + dk) & 255])];
+                }
+            }
+        }
+
+        return trilinearInterp(c, u, v, w);
     }
 
     fn perlinGeneratePerm(allocator: Allocator) ![]i32 {
@@ -65,5 +81,25 @@ pub const Perlin = struct {
             p[i] = p[target];
             p[target] = tmp;
         }
+    }
+
+    fn trilinearInterp(c: [2][2][2]f64, u: f64, v: f64, w: f64) f64 {
+        var accum: f64 = 0.0;
+
+        var i: usize = 0;
+        while (i < 2) : (i += 1) {
+            var j: usize = 0;
+            while (j < 2) : (j += 1) {
+                var k: usize = 0;
+                while (k < 2) : (k += 1) {
+                    const fi = @intToFloat(f64, i);
+                    const fj = @intToFloat(f64, j);
+                    const fk = @intToFloat(f64, k);
+                    accum += (fi * u + (1 - fi) * (1 - u)) * (fj * v + (1 - fj) * (1 - v)) * (fk * w + (1 - fk) * (1 - w)) * c[i][j][k];
+                }
+            }
+        }
+
+        return accum;
     }
 };
