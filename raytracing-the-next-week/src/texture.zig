@@ -76,11 +76,13 @@ pub const NoiseTexture = struct {
     texture: Texture,
 
     noise: Perlin,
+    scale: f64,
 
-    pub fn init(allocator: Allocator) !NoiseTexture {
+    pub fn init(allocator: Allocator, sc: f64) !NoiseTexture {
         return NoiseTexture{
             .texture = .{ .valueFn = value },
             .noise = try Perlin.init(allocator),
+            .scale = sc,
         };
     }
 
@@ -92,6 +94,6 @@ pub const NoiseTexture = struct {
         _ = u;
         _ = v;
         const self = @fieldParentPtr(NoiseTexture, "texture", texture);
-        return Color.init(1, 1, 1).multScalar(self.noise.noise(p));
+        return Color.init(1, 1, 1).multScalar(self.noise.noise(p.multScalar(self.scale)));
     }
 };

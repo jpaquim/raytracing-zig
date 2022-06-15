@@ -172,7 +172,7 @@ fn twoPerlinSpheres(allocator: Allocator) !HittableList {
     var objects = HittableList.init(allocator);
 
     var pertext = try allocator.create(NoiseTexture);
-    pertext.* = try NoiseTexture.init(allocator);
+    pertext.* = try NoiseTexture.init(allocator, 4);
     {
         var m = try allocator.create(Lambertian);
         m.* = Lambertian.init(&pertext.texture);
