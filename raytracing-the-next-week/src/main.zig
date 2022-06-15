@@ -25,6 +25,10 @@ const infinity = rtweekend.infinity;
 const randomDouble = rtweekend.randomDouble;
 const randomDouble2 = rtweekend.randomDouble2;
 
+const texture = @import("./texture.zig");
+const CheckerTexture = texture.CheckerTexture;
+const SolidColor = texture.SolidColor;
+
 const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
 const Point3 = vec3.Point3;
@@ -61,8 +65,10 @@ fn rayColor(r: Ray, world: Hittable, depth: usize) Color {
 fn randomScene(allocator: Allocator) !HittableList {
     var world = HittableList.init(allocator);
 
+    var checker = try allocator.create(CheckerTexture);
+    checker.* = try CheckerTexture.initColors(allocator, Color.init(0.2, 0.3, 0.1), Color.init(0.9, 0.9, 0.9));
     var ground_material = try allocator.create(Lambertian);
-    ground_material.* = try Lambertian.initColor(allocator, Color.init(0.5, 0.5, 0.5));
+    ground_material.* = Lambertian.init(&checker.texture);
     {
         var s = try allocator.create(Sphere);
         s.* = Sphere.init(Point3.init(0, -1000, 0), 1000, &ground_material.material);

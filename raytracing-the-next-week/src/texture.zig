@@ -1,3 +1,6 @@
+const std = @import("std");
+const Allocator = std.mem.Allocator;
+
 const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
 const Point3 = vec3.Point3;
@@ -33,5 +36,36 @@ pub const SolidColor = struct {
         _ = p;
         const self = @fieldParentPtr(SolidColor, "texture", texture);
         return self.color_value;
+    }
+};
+
+pub const CheckerTexture = struct {
+    texture: Texture,
+
+    odd: *Texture,
+    even: *Texture,
+
+    pub fn init(even: *Texture, odd: *Texture) CheckerTexture {
+        return .{
+            .texture = .{ .valueFn = value },
+            .even = even,
+            .odd = odd,
+        };
+    }
+
+    pub fn initColors(allocator: Allocator, c1: Color, c2: Color) !CheckerTexture {
+        var t1 = try allocator.create(SolidColor);
+        t1.* = SolidColor.init(c1);
+        var t2 = try allocator.create(SolidColor);
+        t2.* = SolidColor.init(c2);
+        return CheckerTexture.init(&t1.texture, &t2.texture);
+    }
+
+    pub fn value(texture: *const Texture, u: f64, v: f64, p: Point3) Color {
+        const self = @fieldParentPtr(CheckerTexture, "texture", texture);
+        const sines = @sin(10 * p.x()) * @sin(10 * p.y()) * @sin(10 * p.z());
+        if (sines < 0) {
+            return self.odd.value(u, v, p);
+        } else return self.even.value(u, v, p);
     }
 };
