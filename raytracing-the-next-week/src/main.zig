@@ -1,6 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const BvhNode = @import("./bvh.zig").BvhNode;
+
 const Camera = @import("./camera.zig").Camera;
 const writeColor = @import("./color.zig").writeColor;
 
@@ -60,7 +62,7 @@ fn randomScene(allocator: Allocator) !HittableList {
     var world = HittableList.init(allocator);
 
     var ground_material = try allocator.create(Lambertian);
-    ground_material.* = Lambertian.init(Color.init(0.5, 0.5, 0.5));
+    ground_material.* = try Lambertian.initColor(allocator, Color.init(0.5, 0.5, 0.5));
     {
         var s = try allocator.create(Sphere);
         s.* = Sphere.init(Point3.init(0, -1000, 0), 1000, &ground_material.material);
@@ -80,7 +82,7 @@ fn randomScene(allocator: Allocator) !HittableList {
                 if (choose_mat < 0.8) {
                     const albedo = Color.random().mult(Color.random());
                     var m = try allocator.create(Lambertian);
-                    m.* = Lambertian.init(albedo);
+                    m.* = try Lambertian.initColor(allocator, albedo);
                     sphere_material = &m.material;
 
                     const center2 = center.add(Vec3.init(0, randomDouble2(0, 0.5), 0));
@@ -118,7 +120,7 @@ fn randomScene(allocator: Allocator) !HittableList {
     }
     {
         var material2 = try allocator.create(Lambertian);
-        material2.* = Lambertian.init(Color.init(0.4, 0.2, 0.1));
+        material2.* = try Lambertian.initColor(allocator, Color.init(0.4, 0.2, 0.1));
         var s = try allocator.create(Sphere);
         s.* = Sphere.init(Point3.init(-4, 1, 0), 1.0, &material2.material);
         try world.add(&s.hittable);

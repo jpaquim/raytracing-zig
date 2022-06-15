@@ -11,6 +11,8 @@ pub const HitRecord = struct {
     normal: Vec3,
     mat_ptr: *Material,
     t: f64,
+    u: f64,
+    v: f64,
 
     front_face: bool,
 

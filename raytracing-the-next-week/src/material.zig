@@ -1,4 +1,6 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+
 const min = std.math.min;
 const pow = std.math.pow;
 const sqrt = std.math.sqrt;
@@ -9,6 +11,10 @@ const HitRecord = hittable.HitRecord;
 const Ray = @import("./ray.zig").Ray;
 const rtweekend = @import("./rtweekend.zig");
 const randomDouble = rtweekend.randomDouble;
+
+const texture = @import("./texture.zig");
+const SolidColor = texture.SolidColor;
+const Texture = texture.Texture;
 
 const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
@@ -32,13 +38,19 @@ pub const Material = struct {
 pub const Lambertian = struct {
     material: Material,
 
-    albedo: Color,
+    albedo: *Texture,
 
-    pub fn init(a: Color) Lambertian {
+    pub fn init(a: *Texture) Lambertian {
         return .{
             .material = .{ .scatterFn = scatter },
             .albedo = a,
         };
+    }
+
+    pub fn initColor(allocator: Allocator, a: Color) !Lambertian {
+        var t = try allocator.create(SolidColor);
+        t.* = SolidColor.init(a);
+        return Lambertian.init(&t.texture);
     }
 
     pub fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
@@ -48,7 +60,7 @@ pub const Lambertian = struct {
             scatter_direction = rec.normal;
 
         scattered.* = Ray.init(rec.p, scatter_direction, r_in.time());
-        attenuation.* = self.albedo;
+        attenuation.* = self.albedo.value(rec.u, rec.v, rec.p);
         return true;
     }
 };
