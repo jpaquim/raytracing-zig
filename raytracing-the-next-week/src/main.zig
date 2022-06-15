@@ -27,6 +27,7 @@ const randomDouble2 = rtweekend.randomDouble2;
 
 const texture = @import("./texture.zig");
 const CheckerTexture = texture.CheckerTexture;
+const NoiseTexture = texture.NoiseTexture;
 const SolidColor = texture.SolidColor;
 
 const vec3 = @import("./vec3.zig");
@@ -167,6 +168,29 @@ fn twoSpheres(allocator: Allocator) !HittableList {
     return objects;
 }
 
+fn twoPerlinSpheres(allocator: Allocator) !HittableList {
+    var objects = HittableList.init(allocator);
+
+    var pertext = try allocator.create(NoiseTexture);
+    pertext.* = try NoiseTexture.init(allocator);
+    {
+        var m = try allocator.create(Lambertian);
+        m.* = Lambertian.init(&pertext.texture);
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(0, -1000, 0), 1000, &m.material);
+        try objects.add(&s.hittable);
+    }
+    {
+        var m = try allocator.create(Lambertian);
+        m.* = Lambertian.init(&pertext.texture);
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(0, 2, 0), 2, &m.material);
+        try objects.add(&s.hittable);
+    }
+
+    return objects;
+}
+
 pub fn main() anyerror!void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -186,7 +210,7 @@ pub fn main() anyerror!void {
     var vfov: f64 = 40.0;
     var aperture: f64 = 0.1;
 
-    switch (2) {
+    switch (3) {
         1 => {
             world = try randomScene(allocator);
             lookfrom = Point3.init(13, 2, 3);
@@ -196,6 +220,12 @@ pub fn main() anyerror!void {
         },
         2 => {
             world = try twoSpheres(allocator);
+            lookfrom = Point3.init(13, 2, 3);
+            lookat = Point3.init(0, 0, 0);
+            vfov = 20.0;
+        },
+        3 => {
+            world = try twoPerlinSpheres(allocator);
             lookfrom = Point3.init(13, 2, 3);
             lookat = Point3.init(0, 0, 0);
             vfov = 20.0;

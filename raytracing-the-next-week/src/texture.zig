@@ -1,6 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const Perlin = @import("./perlin.zig").Perlin;
+
 const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
 const Point3 = vec3.Point3;
@@ -67,5 +69,29 @@ pub const CheckerTexture = struct {
         if (sines < 0) {
             return self.odd.value(u, v, p);
         } else return self.even.value(u, v, p);
+    }
+};
+
+pub const NoiseTexture = struct {
+    texture: Texture,
+
+    noise: Perlin,
+
+    pub fn init(allocator: Allocator) !NoiseTexture {
+        return NoiseTexture{
+            .texture = .{ .valueFn = value },
+            .noise = try Perlin.init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *NoiseTexture, allocator: Allocator) void {
+        self.noise.deinit(allocator);
+    }
+
+    pub fn value(texture: *const Texture, u: f64, v: f64, p: Point3) Color {
+        _ = u;
+        _ = v;
+        const self = @fieldParentPtr(NoiseTexture, "texture", texture);
+        return Color.init(1, 1, 1).multScalar(self.noise.noise(p));
     }
 };
