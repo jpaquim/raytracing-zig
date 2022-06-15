@@ -142,6 +142,31 @@ fn randomScene(allocator: Allocator) !HittableList {
     return world;
 }
 
+fn twoSpheres(allocator: Allocator) !HittableList {
+    var objects = HittableList.init(allocator);
+
+    var checker = try allocator.create(CheckerTexture);
+    checker.* = try CheckerTexture.initColors(allocator, Color.init(0.2, 0.3, 0.1), Color.init(0.9, 0.9, 0.9));
+
+    {
+        var m = try allocator.create(Lambertian);
+        m.* = Lambertian.init(&checker.texture);
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(0, -10, 0), 10, &m.material);
+        try objects.add(&s.hittable);
+    }
+
+    {
+        var m = try allocator.create(Lambertian);
+        m.* = Lambertian.init(&checker.texture);
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(0, 10, 0), 10, &m.material);
+        try objects.add(&s.hittable);
+    }
+
+    return objects;
+}
+
 pub fn main() anyerror!void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -155,16 +180,34 @@ pub fn main() anyerror!void {
     const samples_per_pixel = 100;
     const max_depth = 50;
 
-    const world = try randomScene(allocator);
+    var world: HittableList = undefined;
+    var lookfrom: Point3 = undefined;
+    var lookat: Point3 = undefined;
+    var vfov: f64 = 40.0;
+    var aperture: f64 = 0.1;
 
-    const lookfrom = Point3.init(13, 2, 3);
-    const lookat = Point3.init(0, 0, 0);
+    switch (2) {
+        1 => {
+            world = try randomScene(allocator);
+            lookfrom = Point3.init(13, 2, 3);
+            lookat = Point3.init(0, 0, 0);
+            vfov = 20.0;
+            aperture = 0.1;
+        },
+        2 => {
+            world = try twoSpheres(allocator);
+            lookfrom = Point3.init(13, 2, 3);
+            lookat = Point3.init(0, 0, 0);
+            vfov = 20.0;
+        },
+        else => unreachable,
+    }
+
     const vup = Vec3.init(0, 1, 0);
     const dist_to_focus = 10.0;
-    const aperture = 0.1;
     const image_height = @floatToInt(comptime_int, image_width / aspect_ratio);
 
-    const cam = Camera.init(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
+    const cam = Camera.init(lookfrom, lookat, vup, vfov, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 
     const stdout = std.io.getStdOut().writer();
     const stderr = std.io.getStdErr().writer();
