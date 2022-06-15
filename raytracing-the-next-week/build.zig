@@ -16,6 +16,13 @@ pub fn build(b: *std.build.Builder) void {
     exe.setBuildMode(mode);
     exe.install();
 
+    var stb = b.addStaticLibrary("stb", null);
+    stb.linkLibC();
+    stb.addCSourceFile("stb_image/stb_image_wrapper.c", if (b.is_release) &.{"-Os"} else &.{});
+
+    exe.addIncludeDir("stb_image");
+    exe.linkLibrary(stb);
+
     const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {
