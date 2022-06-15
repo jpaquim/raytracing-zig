@@ -62,6 +62,22 @@ pub const Perlin = struct {
         return perlinInterp(c, u, v, w);
     }
 
+    pub fn turb(self: Perlin, p: Point3, depth_opt: ?usize) f64 {
+        const depth = depth_opt orelse 7;
+        var accum: f64 = 0.0;
+        var temp_p = p;
+        var weight: f64 = 1.0;
+
+        var i: usize = 0;
+        while (i < depth) : (i += 1) {
+            accum += weight * self.noise(temp_p);
+            weight *= 0.5;
+            temp_p.multScalarMut(2);
+        }
+
+        return @fabs(accum);
+    }
+
     fn perlinGeneratePerm(allocator: Allocator) ![]i32 {
         const p = try allocator.alloc(i32, point_count);
 

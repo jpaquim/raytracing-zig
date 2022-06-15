@@ -42,11 +42,10 @@ pub const Vec3 = struct {
         self.e[2] += v.e[2];
     }
 
-    pub fn multScalarMut(self: *Vec3, t: f64) Vec3 {
+    pub fn multScalarMut(self: *Vec3, t: f64) void {
         self.e[0] *= t;
         self.e[1] *= t;
         self.e[2] *= t;
-        return self.*;
     }
 
     pub fn divScalarMut(self: *Vec3, t: f64) Vec3 {

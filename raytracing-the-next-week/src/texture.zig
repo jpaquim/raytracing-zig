@@ -94,6 +94,7 @@ pub const NoiseTexture = struct {
         _ = u;
         _ = v;
         const self = @fieldParentPtr(NoiseTexture, "texture", texture);
-        return Color.init(1, 1, 1).multScalar(0.5 * (1 + self.noise.noise(p.multScalar(self.scale))));
+        return Color.init(1, 1, 1).multScalar(self.noise.turb(p.multScalar(self.scale), null));
+        // return Color.init(1, 1, 1).multScalar(0.5 * (1 + self.noise.noise(p.multScalar(self.scale))));
     }
 };
