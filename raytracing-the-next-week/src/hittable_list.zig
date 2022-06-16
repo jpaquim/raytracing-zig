@@ -29,6 +29,15 @@ pub const HittableList = struct {
         };
     }
 
+    pub fn initHittable(allocator: Allocator, hittable: *Hittable) !HittableList {
+        var objects = try std.ArrayList(*Hittable).initCapacity(allocator, 1);
+        objects.appendAssumeCapacity(hittable);
+        return HittableList{
+            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox },
+            .objects = objects,
+        };
+    }
+
     pub fn deinit(self: *HittableList) void {
         self.objects.deinit();
     }

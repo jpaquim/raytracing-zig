@@ -27,6 +27,7 @@ const randomDouble2 = rtweekend.randomDouble2;
 
 const texture = @import("./texture.zig");
 const CheckerTexture = texture.CheckerTexture;
+const ImageTexture = texture.ImageTexture;
 const NoiseTexture = texture.NoiseTexture;
 const SolidColor = texture.SolidColor;
 
@@ -191,6 +192,16 @@ fn twoPerlinSpheres(allocator: Allocator) !HittableList {
     return objects;
 }
 
+fn earth(allocator: Allocator) !HittableList {
+    var earth_texture = try allocator.create(ImageTexture);
+    earth_texture.* = try ImageTexture.init(allocator, "earthmap.jpg");
+    var earth_surface = try allocator.create(Lambertian);
+    earth_surface.* = Lambertian.init(&earth_texture.texture);
+    var globe = try allocator.create(Sphere);
+    globe.* = Sphere.init(Point3.init(0, 0, 0), 2, &earth_surface.material);
+    return HittableList.initHittable(allocator, &globe.hittable);
+}
+
 pub fn main() anyerror!void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -210,7 +221,7 @@ pub fn main() anyerror!void {
     var vfov: f64 = 40.0;
     var aperture: f64 = 0.1;
 
-    switch (3) {
+    switch (4) {
         1 => {
             world = try randomScene(allocator);
             lookfrom = Point3.init(13, 2, 3);
@@ -226,6 +237,12 @@ pub fn main() anyerror!void {
         },
         3 => {
             world = try twoPerlinSpheres(allocator);
+            lookfrom = Point3.init(13, 2, 3);
+            lookat = Point3.init(0, 0, 0);
+            vfov = 20.0;
+        },
+        4 => {
+            world = try earth(allocator);
             lookfrom = Point3.init(13, 2, 3);
             lookat = Point3.init(0, 0, 0);
             vfov = 20.0;

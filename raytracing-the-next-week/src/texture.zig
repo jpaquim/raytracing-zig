@@ -3,10 +3,18 @@ const Allocator = std.mem.Allocator;
 
 const Perlin = @import("./perlin.zig").Perlin;
 
+const rtweekend = @import("./rtweekend.zig");
+const clamp = rtweekend.clamp;
+
 const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
 const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
+
+const stb = @cImport({
+    @cDefine("STBI_ONLY_JPEG", "");
+    @cInclude("stb_image.h");
+});
 
 pub const Texture = struct {
     valueFn: fn (self: *const Texture, u: f64, v: f64, p: Point3) Color,
@@ -97,5 +105,66 @@ pub const NoiseTexture = struct {
         return Color.init(1, 1, 1).multScalar(0.5 * (1 + @sin(self.scale * p.z() + 10 * self.noise.turb(p, null))));
         // return Color.init(1, 1, 1).multScalar(self.noise.turb(p.multScalar(self.scale), null));
         // return Color.init(1, 1, 1).multScalar(0.5 * (1 + self.noise.noise(p.multScalar(self.scale))));
+    }
+};
+
+pub const ImageTexture = struct {
+    const bytes_per_pixel = 3;
+
+    texture: Texture,
+
+    data: ?[]u8 = null,
+    width: usize = 0,
+    height: usize = 0,
+    bytes_per_scanline: usize = 0,
+
+    pub fn init(allocator: Allocator, filename: []const u8) !ImageTexture {
+        var self = ImageTexture{ .texture = .{ .valueFn = value } };
+
+        var filename_c = try allocator.dupeZ(u8, filename);
+        defer allocator.free(filename_c);
+
+        var components_per_pixel: c_int = bytes_per_pixel;
+        var w: c_int = 0;
+        var h: c_int = 0;
+        const data = stb.stbi_load(filename_c.ptr, &w, &h, &components_per_pixel, components_per_pixel);
+
+        if (data == null) {
+            std.io.getStdErr().writer().print("ERROR: Could not load texture image file '{s}'", .{filename}) catch std.process.exit(1);
+            self.width = 0;
+            self.height = 0;
+        } else {
+            self.data = data[0 .. self.width * self.height * @intCast(usize, components_per_pixel)];
+            self.width = @intCast(usize, w);
+            self.height = @intCast(usize, h);
+        }
+
+        self.bytes_per_scanline = bytes_per_pixel * self.width;
+
+        return self;
+    }
+
+    pub fn deinit(self: *ImageTexture) void {
+        std.heap.c_allocator.free(self.data);
+    }
+
+    pub fn value(texture: *const Texture, u: f64, v: f64, p: Point3) Color {
+        _ = p;
+        const self = @fieldParentPtr(ImageTexture, "texture", texture);
+        if (self.data == null)
+            return Color.init(0, 1, 1);
+        const u_c = clamp(u, 0.0, 1.0);
+        const v_c = 1.0 - clamp(v, 0.0, 1.0);
+
+        var i = @floatToInt(usize, u_c * @intToFloat(f64, self.width));
+        var j = @floatToInt(usize, v_c * @intToFloat(f64, self.height));
+
+        if (i >= self.width) i = self.width - 1;
+        if (j >= self.height) i = self.height - 1;
+
+        const color_scale = 1.0 / 255.0;
+        const pixel = @ptrCast([*]u8, self.data.?) + j * self.bytes_per_scanline + i * bytes_per_pixel;
+
+        return Color.init(color_scale * @intToFloat(f64, pixel[0]), color_scale * @intToFloat(f64, pixel[1]), color_scale * @intToFloat(f64, pixel[2]));
     }
 };
