@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const XyRect = @import("./aarect.zig").XyRect;
 const BvhNode = @import("./bvh.zig").BvhNode;
 
 const Camera = @import("./camera.zig").Camera;
@@ -13,6 +14,7 @@ const HitRecord = hittable.HitRecord;
 const HittableList = @import("./hittable_list.zig").HittableList;
 const material = @import("./material.zig");
 const Dielectric = material.Dielectric;
+const DiffuseLight = material.DiffuseLight;
 const Lambertian = material.Lambertian;
 const Material = material.Material;
 const Metal = material.Metal;
@@ -197,6 +199,35 @@ fn earth(allocator: Allocator) !HittableList {
     return HittableList.initHittable(allocator, &globe.hittable);
 }
 
+fn simpleLight(allocator: Allocator) !HittableList {
+    var objects = HittableList.init(allocator);
+
+    var pertext = try allocator.create(NoiseTexture);
+    pertext.* = try NoiseTexture.init(allocator, 4);
+    {
+        var m = try allocator.create(Lambertian);
+        m.* = Lambertian.init(&pertext.texture);
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(0, -1000, 0), 1000, &m.material);
+        try objects.add(&s.hittable);
+    }
+    {
+        var m = try allocator.create(Lambertian);
+        m.* = Lambertian.init(&pertext.texture);
+        var s = try allocator.create(Sphere);
+        s.* = Sphere.init(Point3.init(0, 2, 0), 2, &m.material);
+        try objects.add(&s.hittable);
+    }
+
+    var difflight = try allocator.create(DiffuseLight);
+    difflight.* = try DiffuseLight.initColor(allocator, Color.init(4, 4, 4));
+    var r = try allocator.create(XyRect);
+    r.* = XyRect.init(3, 5, 1, 3, -2, &difflight.material);
+    try objects.add(&r.hittable);
+
+    return objects;
+}
+
 pub fn main() anyerror!void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -207,7 +238,7 @@ pub fn main() anyerror!void {
 
     const aspect_ratio = 16.0 / 9.0;
     const image_width = 400;
-    const samples_per_pixel = 100;
+    var samples_per_pixel: usize = 100;
     const max_depth = 50;
 
     var world: HittableList = undefined;
@@ -217,7 +248,7 @@ pub fn main() anyerror!void {
     var aperture: f64 = 0.1;
     var background = Color.init(0, 0, 0);
 
-    switch (4) {
+    switch (5) {
         1 => {
             world = try randomScene(allocator);
             background = Color.init(0.7, 0.8, 1.0);
@@ -248,7 +279,12 @@ pub fn main() anyerror!void {
             vfov = 20.0;
         },
         5 => {
+            world = try simpleLight(allocator);
+            samples_per_pixel = 400;
             background = Color.init(0, 0, 0);
+            lookfrom = Point3.init(26, 3, 6);
+            lookat = Point3.init(0, 2, 0);
+            vfov = 20.0;
         },
         else => unreachable,
     }
