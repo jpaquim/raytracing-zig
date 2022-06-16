@@ -1,7 +1,10 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const XyRect = @import("./aarect.zig").XyRect;
+const aarect = @import("./aarect.zig");
+const XyRect = aarect.XyRect;
+const XzRect = aarect.XzRect;
+const YzRect = aarect.YzRect;
 const BvhNode = @import("./bvh.zig").BvhNode;
 
 const Camera = @import("./camera.zig").Camera;
@@ -228,6 +231,51 @@ fn simpleLight(allocator: Allocator) !HittableList {
     return objects;
 }
 
+fn cornellBox(allocator: Allocator) !HittableList {
+    var objects = HittableList.init(allocator);
+
+    var red = try allocator.create(Lambertian);
+    red.* = try Lambertian.initColor(allocator, Color.init(0.65, 0.05, 0.05));
+    var white = try allocator.create(Lambertian);
+    white.* = try Lambertian.initColor(allocator, Color.init(0.73, 0.73, 0.73));
+    var green = try allocator.create(Lambertian);
+    green.* = try Lambertian.initColor(allocator, Color.init(0.12, 0.45, 0.15));
+    var light = try allocator.create(DiffuseLight);
+    light.* = try DiffuseLight.initColor(allocator, Color.init(15, 15, 15));
+    {
+        var r = try allocator.create(YzRect);
+        r.* = YzRect.init(0, 555, 0, 555, 555, &green.material);
+        try objects.add(&r.hittable);
+    }
+    {
+        var r = try allocator.create(YzRect);
+        r.* = YzRect.init(0, 555, 0, 555, 0, &red.material);
+        try objects.add(&r.hittable);
+    }
+    {
+        var r = try allocator.create(XzRect);
+        r.* = XzRect.init(213, 343, 227, 332, 554, &light.material);
+        try objects.add(&r.hittable);
+    }
+    {
+        var r = try allocator.create(XzRect);
+        r.* = XzRect.init(0, 555, 0, 555, 0, &white.material);
+        try objects.add(&r.hittable);
+    }
+    {
+        var r = try allocator.create(XzRect);
+        r.* = XzRect.init(0, 555, 0, 555, 555, &white.material);
+        try objects.add(&r.hittable);
+    }
+    {
+        var r = try allocator.create(XyRect);
+        r.* = XyRect.init(0, 555, 0, 555, 555, &white.material);
+        try objects.add(&r.hittable);
+    }
+
+    return objects;
+}
+
 pub fn main() anyerror!void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -236,8 +284,8 @@ pub fn main() anyerror!void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    const aspect_ratio = 16.0 / 9.0;
-    const image_width = 400;
+    var aspect_ratio: f64 = 16.0 / 9.0;
+    var image_width: usize = 400;
     var samples_per_pixel: usize = 100;
     const max_depth = 50;
 
@@ -248,7 +296,7 @@ pub fn main() anyerror!void {
     var aperture: f64 = 0.1;
     var background = Color.init(0, 0, 0);
 
-    switch (5) {
+    switch (6) {
         1 => {
             world = try randomScene(allocator);
             background = Color.init(0.7, 0.8, 1.0);
@@ -286,12 +334,22 @@ pub fn main() anyerror!void {
             lookat = Point3.init(0, 2, 0);
             vfov = 20.0;
         },
+        6 => {
+            world = try cornellBox(allocator);
+            aspect_ratio = 1.0;
+            image_width = 600;
+            samples_per_pixel = 200;
+            background = Color.init(0, 0, 0);
+            lookfrom = Point3.init(278, 278, -800);
+            lookat = Point3.init(278, 278, 0);
+            vfov = 40.0;
+        },
         else => unreachable,
     }
 
     const vup = Vec3.init(0, 1, 0);
     const dist_to_focus = 10.0;
-    const image_height = @floatToInt(comptime_int, image_width / aspect_ratio);
+    const image_height = @floatToInt(usize, @intToFloat(f64, image_width) / aspect_ratio);
 
     const cam = Camera.init(lookfrom, lookat, vup, vfov, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 
@@ -309,8 +367,8 @@ pub fn main() anyerror!void {
             var pixel_color = Color.init(0, 0, 0);
             var s: usize = 0;
             while (s < samples_per_pixel) : (s += 1) {
-                const u = (@intToFloat(f64, i) + randomDouble()) / (image_width - 1);
-                const v = (@intToFloat(f64, j) + randomDouble()) / (image_height - 1);
+                const u = (@intToFloat(f64, i) + randomDouble()) / (@intToFloat(f64, image_width) - 1);
+                const v = (@intToFloat(f64, j) + randomDouble()) / (@intToFloat(f64, image_height) - 1);
                 const r = cam.getRay(u, v);
                 pixel_color.addMut(rayColor(r, background, world.hittable, max_depth));
             }
