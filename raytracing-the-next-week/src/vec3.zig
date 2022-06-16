@@ -32,7 +32,7 @@ pub const Vec3 = struct {
         return self.e[index];
     }
 
-    pub fn atPtr(self: Vec3, index: usize) *f64 {
+    pub fn atPtr(self: *Vec3, index: usize) *f64 {
         return &self.e[index];
     }
 

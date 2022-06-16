@@ -16,6 +16,8 @@ const writeColor = @import("./color.zig").writeColor;
 const hittable = @import("./hittable.zig");
 const Hittable = hittable.Hittable;
 const HitRecord = hittable.HitRecord;
+const RotateY = hittable.RotateY;
+const Translate = hittable.Translate;
 
 const HittableList = @import("./hittable_list.zig").HittableList;
 const material = @import("./material.zig");
@@ -278,13 +280,21 @@ fn cornellBox(allocator: Allocator) !HittableList {
 
     {
         var b = try allocator.create(Box);
-        b.* = try Box.init(allocator, Point3.init(130, 0, 65), Point3.init(295, 165, 230), &white.material);
-        try objects.add(&b.hittable);
+        b.* = try Box.init(allocator, Point3.init(0, 0, 0), Point3.init(165, 330, 165), &white.material);
+        var r = try allocator.create(RotateY);
+        r.* = RotateY.init(&b.hittable, 15);
+        var t = try allocator.create(Translate);
+        t.* = Translate.init(&r.hittable, Vec3.init(265, 0, 295));
+        try objects.add(&t.hittable);
     }
     {
         var b = try allocator.create(Box);
-        b.* = try Box.init(allocator, Point3.init(265, 0, 295), Point3.init(430, 330, 460), &white.material);
-        try objects.add(&b.hittable);
+        b.* = try Box.init(allocator, Point3.init(0, 0, 0), Point3.init(165, 165, 165), &white.material);
+        var r = try allocator.create(RotateY);
+        r.* = RotateY.init(&b.hittable, -18);
+        var t = try allocator.create(Translate);
+        t.* = Translate.init(&r.hittable, Vec3.init(130, 0, 65));
+        try objects.add(&t.hittable);
     }
 
     return objects;
