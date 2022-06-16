@@ -5,6 +5,9 @@ const aarect = @import("./aarect.zig");
 const XyRect = aarect.XyRect;
 const XzRect = aarect.XzRect;
 const YzRect = aarect.YzRect;
+
+const Box = @import("./box.zig").Box;
+
 const BvhNode = @import("./bvh.zig").BvhNode;
 
 const Camera = @import("./camera.zig").Camera;
@@ -271,6 +274,17 @@ fn cornellBox(allocator: Allocator) !HittableList {
         var r = try allocator.create(XyRect);
         r.* = XyRect.init(0, 555, 0, 555, 555, &white.material);
         try objects.add(&r.hittable);
+    }
+
+    {
+        var b = try allocator.create(Box);
+        b.* = try Box.init(allocator, Point3.init(130, 0, 65), Point3.init(295, 165, 230), &white.material);
+        try objects.add(&b.hittable);
+    }
+    {
+        var b = try allocator.create(Box);
+        b.* = try Box.init(allocator, Point3.init(265, 0, 295), Point3.init(430, 330, 460), &white.material);
+        try objects.add(&b.hittable);
     }
 
     return objects;
