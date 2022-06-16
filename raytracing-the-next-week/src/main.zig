@@ -189,12 +189,9 @@ fn twoPerlinSpheres(allocator: Allocator) !HittableList {
 }
 
 fn earth(allocator: Allocator) !HittableList {
-    var earth_texture = try allocator.create(ImageTexture);
-    earth_texture.* = try ImageTexture.init(allocator, "earthmap.jpg");
-    var earth_surface = try allocator.create(Lambertian);
-    earth_surface.* = Lambertian.init(&earth_texture.texture);
-    var globe = try allocator.create(Sphere);
-    globe.* = Sphere.init(Point3.init(0, 0, 0), 2, &earth_surface.material);
+    const earth_texture = try makePtrErr(allocator, ImageTexture, .{ allocator, "earthmap.jpg" });
+    const earth_surface = try makePtr(allocator, Lambertian, .{&earth_texture.texture});
+    const globe = try makePtr(allocator, Sphere, .{ Point3.init(0, 0, 0), 2, &earth_surface.material });
     return HittableList.initHittable(allocator, &globe.hittable);
 }
 
@@ -292,6 +289,70 @@ fn cornellSmoke(allocator: Allocator) !HittableList {
     return objects;
 }
 
+fn finalScene(allocator: Allocator) !HittableList {
+    var boxes = HittableList.init(allocator);
+    const ground = try makePtrColor(allocator, Lambertian, .{ allocator, Color.init(0.48, 0.83, 0.53) });
+
+    const boxes_per_side = 20;
+    var i: usize = 0;
+    while (i < boxes_per_side) : (i += 1) {
+        var j: usize = 0;
+        while (j < boxes_per_side) : (j += 1) {
+            const w = 100.0;
+            const x0 = -1000.0 + @intToFloat(f64, i) * w;
+            const z0 = -1000.0 + @intToFloat(f64, j) * w;
+            const y0 = 0.0;
+            const x1 = x0 + w;
+            const y1 = randomDouble2(1, 101);
+            const z1 = z0 + w;
+
+            try boxes.add(&(try makePtrErr(allocator, Box, .{ allocator, Point3.init(x0, y0, z0), Point3.init(x1, y1, z1), &ground.material })).hittable);
+        }
+    }
+
+    var objects = HittableList.init(allocator);
+
+    try objects.add(&(try makePtrErr(allocator, BvhNode, .{ allocator, boxes, 0, 1 })).hittable);
+
+    const light = try makePtrColor(allocator, DiffuseLight, .{ allocator, Color.init(7, 7, 7) });
+    try objects.add(&(try makePtr(allocator, XzRect, .{ 123, 423, 147, 412, 554, &light.material })).hittable);
+
+    const center1 = Point3.init(400, 400, 200);
+    const center2 = center1.add(Vec3.init(30, 0, 0));
+    const moving_sphere_material = try makePtrColor(allocator, Lambertian, .{ allocator, Color.init(0.7, 0.3, 0.1) });
+    try objects.add(&(try makePtr(allocator, MovingSphere, .{ center1, center2, 0, 1, 50, &moving_sphere_material.material })).hittable);
+
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(260, 150, 45), 50, &(try makePtr(allocator, Dielectric, .{1.5})).material })).hittable);
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, 150, 145), 50, &(try makePtr(allocator, Metal, .{ Color.init(0.8, 0.8, 0.9), 1.0 })).material })).hittable);
+
+    var boundary = try makePtr(allocator, Sphere, .{ Point3.init(360, 150, 145), 70, &(try makePtr(allocator, Dielectric, .{1.5})).material });
+    try objects.add(&boundary.hittable);
+    try objects.add(&(try makePtrColor(allocator, ConstantMedium, .{ allocator, &boundary.hittable, 0.2, Color.init(0.2, 0.4, 0.9) })).hittable);
+    boundary = try makePtr(allocator, Sphere, .{ Point3.init(0, 0, 0), 5000, &(try makePtr(allocator, Dielectric, .{1.5})).material });
+    try objects.add(&(try makePtrColor(allocator, ConstantMedium, .{ allocator, &boundary.hittable, 0.0001, Color.init(1, 1, 1) })).hittable);
+
+    const emat = try makePtr(allocator, Lambertian, .{&(try makePtrErr(allocator, ImageTexture, .{ allocator, "earthmap.jpg" })).texture});
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(400, 200, 400), 100, &emat.material })).hittable);
+
+    const pertext = try makePtrErr(allocator, NoiseTexture, .{ allocator, 4 });
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(220, 280, 300), 80, &(try makePtr(allocator, Lambertian, .{&pertext.texture})).material })).hittable);
+
+    var boxes2 = HittableList.init(allocator);
+    const white = try makePtrColor(allocator, Lambertian, .{ allocator, Color.init(0.73, 0.73, 0.73) });
+    const ns = 1000;
+    var j: usize = 0;
+    while (j < ns) : (j += 1) {
+        try boxes2.add(&(try makePtr(allocator, Sphere, .{ Point3.random2(0, 165), 10, &white.material })).hittable);
+    }
+
+    const bvh = try makePtrErr(allocator, BvhNode, .{ allocator, boxes2, 0, 1 });
+    const rotate_y = try makePtr(allocator, RotateY, .{ &bvh.hittable, 15 });
+    const translate = try makePtr(allocator, Translate, .{ &rotate_y.hittable, Vec3.init(-100, 270, 395) });
+    try objects.add(&translate.hittable);
+
+    return objects;
+}
+
 pub fn main() anyerror!void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -312,7 +373,7 @@ pub fn main() anyerror!void {
     var aperture: f64 = 0.1;
     var background = Color.init(0, 0, 0);
 
-    switch (7) {
+    switch (8) {
         1 => {
             world = try randomScene(allocator);
             background = Color.init(0.7, 0.8, 1.0);
@@ -367,6 +428,16 @@ pub fn main() anyerror!void {
             samples_per_pixel = 200;
             background = Color.init(0, 0, 0);
             lookfrom = Point3.init(278, 278, -800);
+            lookat = Point3.init(278, 278, 0);
+            vfov = 40.0;
+        },
+        8 => {
+            world = try finalScene(allocator);
+            aspect_ratio = 1.0;
+            image_width = 600;
+            samples_per_pixel = 10000;
+            background = Color.init(0, 0, 0);
+            lookfrom = Point3.init(478, 278, -600);
             lookat = Point3.init(278, 278, 0);
             vfov = 40.0;
         },
