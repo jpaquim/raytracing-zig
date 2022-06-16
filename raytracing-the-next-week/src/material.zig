@@ -173,3 +173,29 @@ pub const DiffuseLight = struct {
         return self.emit.value(u, v, p);
     }
 };
+
+pub const Isotropic = struct {
+    material: Material,
+
+    albedo: *Texture,
+
+    pub fn init(a: *Texture) Isotropic {
+        return .{
+            .material = .{ .scatterFn = scatter },
+            .albedo = a,
+        };
+    }
+
+    pub fn initColor(allocator: Allocator, c: Color) !Isotropic {
+        var t = try allocator.create(SolidColor);
+        t.* = SolidColor.init(c);
+        return Isotropic.init(&t.texture);
+    }
+
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
+        const self = @fieldParentPtr(Isotropic, "material", material);
+        scattered.* = Ray.init(rec.p, randomInUnitSphere(), r_in.time());
+        attenuation.* = self.albedo.value(rec.u, rec.v, rec.p);
+        return false;
+    }
+};

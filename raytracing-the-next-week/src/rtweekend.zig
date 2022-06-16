@@ -1,4 +1,5 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 
 pub const infinity = std.math.f64_max;
 pub const pi = std.math.pi;
@@ -36,4 +37,22 @@ pub fn clamp(x: f64, min: f64, max: f64) f64 {
 
 pub fn randomInt(min: usize, max: usize) usize {
     return @floatToInt(usize, randomDouble2(@intToFloat(f64, min), @intToFloat(f64, max + 1)));
+}
+
+pub fn makePtr(allocator: Allocator, comptime T: type, args: anytype) !*T {
+    var ptr = try allocator.create(T);
+    ptr.* = @call(.{}, T.init, args);
+    return ptr;
+}
+
+pub fn makePtrErr(allocator: Allocator, comptime T: type, args: anytype) !*T {
+    var ptr = try allocator.create(T);
+    ptr.* = try @call(.{}, T.init, args);
+    return ptr;
+}
+
+pub fn makePtrColor(allocator: Allocator, comptime T: type, args: anytype) !*T {
+    var ptr = try allocator.create(T);
+    ptr.* = try @call(.{}, T.initColor, args);
+    return ptr;
 }

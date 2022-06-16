@@ -12,6 +12,7 @@ const BvhNode = @import("./bvh.zig").BvhNode;
 
 const Camera = @import("./camera.zig").Camera;
 const writeColor = @import("./color.zig").writeColor;
+const ConstantMedium = @import("./constant_medium.zig").ConstantMedium;
 
 const hittable = @import("./hittable.zig");
 const Hittable = hittable.Hittable;
@@ -32,6 +33,9 @@ const Sphere = @import("./sphere.zig").Sphere;
 
 const rtweekend = @import("./rtweekend.zig");
 const infinity = rtweekend.infinity;
+const makePtr = rtweekend.makePtr;
+const makePtrColor = rtweekend.makePtrColor;
+const makePtrErr = rtweekend.makePtrErr;
 const randomDouble = rtweekend.randomDouble;
 const randomDouble2 = rtweekend.randomDouble2;
 
@@ -155,21 +159,8 @@ fn twoSpheres(allocator: Allocator) !HittableList {
     var checker = try allocator.create(CheckerTexture);
     checker.* = try CheckerTexture.initColors(allocator, Color.init(0.2, 0.3, 0.1), Color.init(0.9, 0.9, 0.9));
 
-    {
-        var m = try allocator.create(Lambertian);
-        m.* = Lambertian.init(&checker.texture);
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, -10, 0), 10, &m.material);
-        try objects.add(&s.hittable);
-    }
-
-    {
-        var m = try allocator.create(Lambertian);
-        m.* = Lambertian.init(&checker.texture);
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, 10, 0), 10, &m.material);
-        try objects.add(&s.hittable);
-    }
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, -10, 0), 10, &(try makePtr(allocator, Lambertian, .{&checker.texture})).material })).hittable);
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, 10, 0), 10, &(try makePtr(allocator, Lambertian, .{&checker.texture})).material })).hittable);
 
     return objects;
 }
@@ -239,63 +230,64 @@ fn simpleLight(allocator: Allocator) !HittableList {
 fn cornellBox(allocator: Allocator) !HittableList {
     var objects = HittableList.init(allocator);
 
-    var red = try allocator.create(Lambertian);
-    red.* = try Lambertian.initColor(allocator, Color.init(0.65, 0.05, 0.05));
-    var white = try allocator.create(Lambertian);
-    white.* = try Lambertian.initColor(allocator, Color.init(0.73, 0.73, 0.73));
-    var green = try allocator.create(Lambertian);
-    green.* = try Lambertian.initColor(allocator, Color.init(0.12, 0.45, 0.15));
-    var light = try allocator.create(DiffuseLight);
-    light.* = try DiffuseLight.initColor(allocator, Color.init(15, 15, 15));
-    {
-        var r = try allocator.create(YzRect);
-        r.* = YzRect.init(0, 555, 0, 555, 555, &green.material);
-        try objects.add(&r.hittable);
-    }
-    {
-        var r = try allocator.create(YzRect);
-        r.* = YzRect.init(0, 555, 0, 555, 0, &red.material);
-        try objects.add(&r.hittable);
-    }
-    {
-        var r = try allocator.create(XzRect);
-        r.* = XzRect.init(213, 343, 227, 332, 554, &light.material);
-        try objects.add(&r.hittable);
-    }
-    {
-        var r = try allocator.create(XzRect);
-        r.* = XzRect.init(0, 555, 0, 555, 0, &white.material);
-        try objects.add(&r.hittable);
-    }
-    {
-        var r = try allocator.create(XzRect);
-        r.* = XzRect.init(0, 555, 0, 555, 555, &white.material);
-        try objects.add(&r.hittable);
-    }
-    {
-        var r = try allocator.create(XyRect);
-        r.* = XyRect.init(0, 555, 0, 555, 555, &white.material);
-        try objects.add(&r.hittable);
-    }
+    const red = try makePtrColor(allocator, Lambertian, .{ allocator, Color.init(0.65, 0.05, 0.05) });
+    const white = try makePtrColor(allocator, Lambertian, .{ allocator, Color.init(0.73, 0.73, 0.73) });
+    const green = try makePtrColor(allocator, Lambertian, .{ allocator, Color.init(0.12, 0.45, 0.15) });
+    const light = try makePtrColor(allocator, DiffuseLight, .{ allocator, Color.init(15, 15, 15) });
+
+    try objects.add(&(try makePtr(allocator, YzRect, .{ 0, 555, 0, 555, 555, &green.material })).hittable);
+    try objects.add(&(try makePtr(allocator, YzRect, .{ 0, 555, 0, 555, 0, &red.material })).hittable);
+    try objects.add(&(try makePtr(allocator, XzRect, .{ 213, 343, 227, 332, 554, &light.material })).hittable);
+    try objects.add(&(try makePtr(allocator, XzRect, .{ 0, 555, 0, 555, 0, &white.material })).hittable);
+    try objects.add(&(try makePtr(allocator, XzRect, .{ 0, 555, 0, 555, 555, &white.material })).hittable);
+    try objects.add(&(try makePtr(allocator, XyRect, .{ 0, 555, 0, 555, 555, &white.material })).hittable);
 
     {
-        var b = try allocator.create(Box);
-        b.* = try Box.init(allocator, Point3.init(0, 0, 0), Point3.init(165, 330, 165), &white.material);
-        var r = try allocator.create(RotateY);
-        r.* = RotateY.init(&b.hittable, 15);
-        var t = try allocator.create(Translate);
-        t.* = Translate.init(&r.hittable, Vec3.init(265, 0, 295));
-        try objects.add(&t.hittable);
+        const box = try makePtrErr(allocator, Box, .{ allocator, Point3.init(0, 0, 0), Point3.init(165, 330, 165), &white.material });
+        const rotate_y = try makePtr(allocator, RotateY, .{ &box.hittable, 15 });
+        const translate = try makePtr(allocator, Translate, .{ &rotate_y.hittable, Vec3.init(265, 0, 295) });
+        try objects.add(&translate.hittable);
     }
     {
-        var b = try allocator.create(Box);
-        b.* = try Box.init(allocator, Point3.init(0, 0, 0), Point3.init(165, 165, 165), &white.material);
-        var r = try allocator.create(RotateY);
-        r.* = RotateY.init(&b.hittable, -18);
-        var t = try allocator.create(Translate);
-        t.* = Translate.init(&r.hittable, Vec3.init(130, 0, 65));
-        try objects.add(&t.hittable);
+        const box = try makePtrErr(allocator, Box, .{ allocator, Point3.init(0, 0, 0), Point3.init(165, 165, 165), &white.material });
+        const rotate_y = try makePtr(allocator, RotateY, .{ &box.hittable, -18 });
+        const translate = try makePtr(allocator, Translate, .{ &rotate_y.hittable, Vec3.init(130, 0, 65) });
+        try objects.add(&translate.hittable);
     }
+
+    return objects;
+}
+
+fn cornellSmoke(allocator: Allocator) !HittableList {
+    var objects = HittableList.init(allocator);
+
+    const red = try makePtrColor(allocator, Lambertian, .{ allocator, Color.init(0.65, 0.05, 0.05) });
+    const white = try makePtrColor(allocator, Lambertian, .{ allocator, Color.init(0.73, 0.73, 0.73) });
+    const green = try makePtrColor(allocator, Lambertian, .{ allocator, Color.init(0.12, 0.45, 0.15) });
+    const light = try makePtrColor(allocator, DiffuseLight, .{ allocator, Color.init(7, 7, 7) });
+
+    try objects.add(&(try makePtr(allocator, YzRect, .{ 0, 555, 0, 555, 555, &green.material })).hittable);
+    try objects.add(&(try makePtr(allocator, YzRect, .{ 0, 555, 0, 555, 0, &red.material })).hittable);
+    try objects.add(&(try makePtr(allocator, XzRect, .{ 113, 443, 127, 432, 554, &light.material })).hittable);
+    try objects.add(&(try makePtr(allocator, XzRect, .{ 0, 555, 0, 555, 0, &white.material })).hittable);
+    try objects.add(&(try makePtr(allocator, XzRect, .{ 0, 555, 0, 555, 555, &white.material })).hittable);
+    try objects.add(&(try makePtr(allocator, XyRect, .{ 0, 555, 0, 555, 555, &white.material })).hittable);
+
+    const box1 = blk: {
+        const box = try makePtrErr(allocator, Box, .{ allocator, Point3.init(0, 0, 0), Point3.init(165, 330, 165), &white.material });
+        const rotate_y = try makePtr(allocator, RotateY, .{ &box.hittable, 15 });
+        const translate = try makePtr(allocator, Translate, .{ &rotate_y.hittable, Vec3.init(265, 0, 295) });
+        break :blk &translate.hittable;
+    };
+    const box2 = blk: {
+        const box = try makePtrErr(allocator, Box, .{ allocator, Point3.init(0, 0, 0), Point3.init(165, 165, 165), &white.material });
+        const rotate_y = try makePtr(allocator, RotateY, .{ &box.hittable, -18 });
+        const translate = try makePtr(allocator, Translate, .{ &rotate_y.hittable, Vec3.init(130, 0, 65) });
+        break :blk &translate.hittable;
+    };
+
+    try objects.add(&(try makePtrColor(allocator, ConstantMedium, .{ allocator, box1, 0.01, Color.init(0, 0, 0) })).hittable);
+    try objects.add(&(try makePtrColor(allocator, ConstantMedium, .{ allocator, box2, 0.01, Color.init(1, 1, 1) })).hittable);
 
     return objects;
 }
@@ -320,7 +312,7 @@ pub fn main() anyerror!void {
     var aperture: f64 = 0.1;
     var background = Color.init(0, 0, 0);
 
-    switch (6) {
+    switch (7) {
         1 => {
             world = try randomScene(allocator);
             background = Color.init(0.7, 0.8, 1.0);
@@ -360,6 +352,16 @@ pub fn main() anyerror!void {
         },
         6 => {
             world = try cornellBox(allocator);
+            aspect_ratio = 1.0;
+            image_width = 600;
+            samples_per_pixel = 200;
+            background = Color.init(0, 0, 0);
+            lookfrom = Point3.init(278, 278, -800);
+            lookat = Point3.init(278, 278, 0);
+            vfov = 40.0;
+        },
+        7 => {
+            world = try cornellSmoke(allocator);
             aspect_ratio = 1.0;
             image_width = 600;
             samples_per_pixel = 200;
