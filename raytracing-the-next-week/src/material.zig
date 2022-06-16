@@ -28,10 +28,23 @@ const reflect = vec3.reflect;
 const refract = vec3.refract;
 
 pub const Material = struct {
+    emittedFn: fn (self: *const Material, u: f64, v: f64, p: Point3) Color = emittedDefault,
     scatterFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool,
 
     pub fn scatter(self: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
         return self.scatterFn(self, r_in, rec, attenuation, scattered);
+    }
+
+    pub fn emitted(self: *const Material, u: f64, v: f64, p: Point3) Color {
+        return self.emittedFn(self, u, v, p);
+    }
+
+    fn emittedDefault(self: *const Material, u: f64, v: f64, p: Point3) Color {
+        _ = self;
+        _ = u;
+        _ = v;
+        _ = p;
+        return Color.init(0, 0, 0);
     }
 };
 
@@ -53,7 +66,7 @@ pub const Lambertian = struct {
         return Lambertian.init(&t.texture);
     }
 
-    pub fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
         const self = @fieldParentPtr(Lambertian, "material", material);
         var scatter_direction = rec.normal.add(randomUnitVector());
         if (scatter_direction.nearZero())
@@ -79,7 +92,7 @@ pub const Metal = struct {
         };
     }
 
-    pub fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
         const self = @fieldParentPtr(Metal, "material", material);
         const reflected = reflect(unitVector(r_in.direction()), rec.normal);
         scattered.* = Ray.init(rec.p, reflected.add(randomInUnitSphere().multScalar(self.fuzz)), r_in.time());
@@ -100,7 +113,7 @@ pub const Dielectric = struct {
         };
     }
 
-    pub fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
         const self = @fieldParentPtr(Dielectric, "material", material);
         attenuation.* = Color.init(1, 1, 1);
         const refraction_ratio = if (rec.front_face) 1.0 / self.ir else self.ir;
@@ -124,5 +137,39 @@ pub const Dielectric = struct {
         var r0 = (1 - ref_idx) / (1 + ref_idx);
         r0 = r0 * r0;
         return r0 + (1 - r0) * pow(f64, 1 - cosine, 5);
+    }
+};
+
+pub const DiffuseLight = struct {
+    material: Material,
+
+    emit: *Texture,
+
+    pub fn init(a: *Texture) DiffuseLight {
+        return .{
+            .material = .{ .scatterFn = scatter, .emittedFn = emitted },
+            .emit = a,
+        };
+    }
+
+    pub fn initColor(allocator: Allocator, c: Color) !DiffuseLight {
+        var t = try allocator.create(SolidColor);
+        t.* = SolidColor.init(c);
+        return DiffuseLight.init(&t.texture);
+    }
+
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
+        _ = material;
+        _ = r_in;
+        _ = r_in;
+        _ = rec;
+        _ = attenuation;
+        _ = scattered;
+        return false;
+    }
+
+    fn emitted(material: *const Material, u: f64, v: f64, p: Point3) Color {
+        const self = @fieldParentPtr(DiffuseLight, "material", material);
+        return self.emit.value(u, v, p);
     }
 };

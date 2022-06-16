@@ -40,28 +40,23 @@ const randomInUnitSphere = vec3.randomInUnitSphere;
 const randomUnitVector = vec3.randomUnitVector;
 const unitVector = vec3.unitVector;
 
-fn rayColor(r: Ray, world: Hittable, depth: usize) Color {
+fn rayColor(r: Ray, background: Color, world: Hittable, depth: usize) Color {
     var rec: HitRecord = undefined;
 
     if (depth <= 0)
         return Color.init(0, 0, 0);
 
-    if (world.hit(r, 0.001, infinity, &rec)) {
-        var scattered: Ray = undefined;
-        var attenuation: Color = undefined;
-        if (rec.mat_ptr.scatter(r, rec, &attenuation, &scattered))
-            return attenuation.mult(rayColor(scattered, world, depth - 1));
-        return Color.init(0, 0, 0);
-        // const target = rec.p.add(rec.normal).add(randomInUnitSphere());
-        // const target = rec.p.add(rec.normal).add(randomUnitVector());
-        // const target = rec.p.add(randomInHemisphere(rec.normal));
-        // return rayColor(Ray.init(rec.p, target.sub(rec.p)), world, depth - 1).multScalar(0.5);
-    }
-    const unit_direction = unitVector(r.direction());
-    const t = 0.5 * (unit_direction.y() + 1.0);
-    return Color.init(1, 1, 1)
-        .multScalar(1.0 - t)
-        .add(Color.init(0.5, 0.7, 1.0).multScalar(t));
+    if (!world.hit(r, 0.001, infinity, &rec))
+        return background;
+
+    var scattered: Ray = undefined;
+    var attenuation: Color = undefined;
+    const emitted = rec.mat_ptr.emitted(rec.u, rec.v, rec.p);
+
+    if (!rec.mat_ptr.scatter(r, rec, &attenuation, &scattered))
+        return emitted;
+
+    return emitted.add(attenuation.mult(rayColor(scattered, background, world, depth - 1)));
 }
 
 fn randomScene(allocator: Allocator) !HittableList {
@@ -220,10 +215,12 @@ pub fn main() anyerror!void {
     var lookat: Point3 = undefined;
     var vfov: f64 = 40.0;
     var aperture: f64 = 0.1;
+    var background = Color.init(0, 0, 0);
 
     switch (4) {
         1 => {
             world = try randomScene(allocator);
+            background = Color.init(0.7, 0.8, 1.0);
             lookfrom = Point3.init(13, 2, 3);
             lookat = Point3.init(0, 0, 0);
             vfov = 20.0;
@@ -231,21 +228,27 @@ pub fn main() anyerror!void {
         },
         2 => {
             world = try twoSpheres(allocator);
+            background = Color.init(0.7, 0.8, 1.0);
             lookfrom = Point3.init(13, 2, 3);
             lookat = Point3.init(0, 0, 0);
             vfov = 20.0;
         },
         3 => {
             world = try twoPerlinSpheres(allocator);
+            background = Color.init(0.7, 0.8, 1.0);
             lookfrom = Point3.init(13, 2, 3);
             lookat = Point3.init(0, 0, 0);
             vfov = 20.0;
         },
         4 => {
             world = try earth(allocator);
+            background = Color.init(0.7, 0.8, 1.0);
             lookfrom = Point3.init(13, 2, 3);
             lookat = Point3.init(0, 0, 0);
             vfov = 20.0;
+        },
+        5 => {
+            background = Color.init(0, 0, 0);
         },
         else => unreachable,
     }
@@ -273,7 +276,7 @@ pub fn main() anyerror!void {
                 const u = (@intToFloat(f64, i) + randomDouble()) / (image_width - 1);
                 const v = (@intToFloat(f64, j) + randomDouble()) / (image_height - 1);
                 const r = cam.getRay(u, v);
-                pixel_color.addMut(rayColor(r, world.hittable, max_depth));
+                pixel_color.addMut(rayColor(r, background, world.hittable, max_depth));
             }
             try writeColor(stdout, pixel_color, samples_per_pixel);
         }
