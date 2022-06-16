@@ -15,6 +15,8 @@ const HittableList = @import("./hittable_list.zig").HittableList;
 
 const Material = @import("./material.zig").Material;
 const Ray = @import("./ray.zig").Ray;
+const rtweekend = @import("./rtweekend.zig");
+const makePtr = rtweekend.makePtr;
 
 const vec3 = @import("./vec3.zig");
 const Point3 = vec3.Point3;
@@ -30,38 +32,12 @@ pub const Box = struct {
     pub fn init(allocator: Allocator, p0: Point3, p1: Point3, ptr: *Material) !Box {
         var sides = HittableList.init(allocator);
 
-        {
-            var r = try allocator.create(XyRect);
-            r.* = XyRect.init(p0.x(), p1.x(), p0.y(), p1.y(), p1.z(), ptr);
-            try sides.add(&r.hittable);
-        }
-        {
-            var r = try allocator.create(XyRect);
-            r.* = XyRect.init(p0.x(), p1.x(), p0.y(), p1.y(), p0.z(), ptr);
-            try sides.add(&r.hittable);
-        }
-
-        {
-            var r = try allocator.create(XzRect);
-            r.* = XzRect.init(p0.x(), p1.x(), p0.z(), p1.z(), p1.y(), ptr);
-            try sides.add(&r.hittable);
-        }
-        {
-            var r = try allocator.create(XzRect);
-            r.* = XzRect.init(p0.x(), p1.x(), p0.z(), p1.z(), p0.y(), ptr);
-            try sides.add(&r.hittable);
-        }
-
-        {
-            var r = try allocator.create(YzRect);
-            r.* = YzRect.init(p0.y(), p1.y(), p0.z(), p1.z(), p1.x(), ptr);
-            try sides.add(&r.hittable);
-        }
-        {
-            var r = try allocator.create(YzRect);
-            r.* = YzRect.init(p0.y(), p1.y(), p0.z(), p1.z(), p0.x(), ptr);
-            try sides.add(&r.hittable);
-        }
+        try sides.add(&(try makePtr(allocator, XyRect, .{ p0.x(), p1.x(), p0.y(), p1.y(), p1.z(), ptr })).hittable);
+        try sides.add(&(try makePtr(allocator, XyRect, .{ p0.x(), p1.x(), p0.y(), p1.y(), p0.z(), ptr })).hittable);
+        try sides.add(&(try makePtr(allocator, XzRect, .{ p0.x(), p1.x(), p0.z(), p1.z(), p1.y(), ptr })).hittable);
+        try sides.add(&(try makePtr(allocator, XzRect, .{ p0.x(), p1.x(), p0.z(), p1.z(), p0.y(), ptr })).hittable);
+        try sides.add(&(try makePtr(allocator, YzRect, .{ p0.y(), p1.y(), p0.z(), p1.z(), p1.x(), ptr })).hittable);
+        try sides.add(&(try makePtr(allocator, YzRect, .{ p0.y(), p1.y(), p0.z(), p1.z(), p0.x(), ptr })).hittable);
 
         return Box{
             .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox },

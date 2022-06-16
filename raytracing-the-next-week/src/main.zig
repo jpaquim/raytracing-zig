@@ -76,15 +76,10 @@ fn rayColor(r: Ray, background: Color, world: Hittable, depth: usize) Color {
 fn randomScene(allocator: Allocator) !HittableList {
     var world = HittableList.init(allocator);
 
-    var checker = try allocator.create(CheckerTexture);
-    checker.* = try CheckerTexture.initColors(allocator, Color.init(0.2, 0.3, 0.1), Color.init(0.9, 0.9, 0.9));
-    var ground_material = try allocator.create(Lambertian);
-    ground_material.* = Lambertian.init(&checker.texture);
-    {
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, -1000, 0), 1000, &ground_material.material);
-        try world.add(&s.hittable);
-    }
+    const checker = try makePtrColor(allocator, CheckerTexture, .{ allocator, Color.init(0.2, 0.3, 0.1), Color.init(0.9, 0.9, 0.9) });
+    const ground_material = try makePtr(allocator, Lambertian, .{&checker.texture});
+
+    try world.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, -1000, 0), 1000, &ground_material.material })).hittable);
 
     var a: i32 = -11;
     while (a < 11) : (a += 1) {
@@ -98,57 +93,33 @@ fn randomScene(allocator: Allocator) !HittableList {
 
                 if (choose_mat < 0.8) {
                     const albedo = Color.random().mult(Color.random());
-                    var m = try allocator.create(Lambertian);
-                    m.* = try Lambertian.initColor(allocator, albedo);
-                    sphere_material = &m.material;
+                    sphere_material = &(try makePtrColor(allocator, Lambertian, .{ allocator, albedo })).material;
 
                     const center2 = center.add(Vec3.init(0, randomDouble2(0, 0.5), 0));
-                    var s = try allocator.create(MovingSphere);
-                    s.* = MovingSphere.init(center, center2, 0.0, 1.0, 0.2, sphere_material);
-                    try world.add(&s.hittable);
+
+                    try world.add(&(try makePtr(allocator, MovingSphere, .{ center, center2, 0.0, 1.0, 0.2, sphere_material })).hittable);
                 } else if (choose_mat < 0.95) {
                     const albedo = Color.random2(0.5, 1);
                     const fuzz = randomDouble2(0, 0.5);
-                    var m = try allocator.create(Metal);
-                    m.* = Metal.init(albedo, fuzz);
-                    sphere_material = &m.material;
+                    sphere_material = &(try makePtr(allocator, Metal, .{ albedo, fuzz })).material;
 
-                    var s = try allocator.create(Sphere);
-                    s.* = Sphere.init(center, 0.2, sphere_material);
-                    try world.add(&s.hittable);
+                    try world.add(&(try makePtr(allocator, Sphere, .{ center, 0.2, sphere_material })).hittable);
                 } else {
-                    var m = try allocator.create(Dielectric);
-                    m.* = Dielectric.init(1.5);
-                    sphere_material = &m.material;
+                    sphere_material = &(try makePtr(allocator, Dielectric, .{1.5})).material;
 
-                    var s = try allocator.create(Sphere);
-                    s.* = Sphere.init(center, 0.2, sphere_material);
-                    try world.add(&s.hittable);
+                    try world.add(&(try makePtr(allocator, Sphere, .{ center, 0.2, sphere_material })).hittable);
                 }
             }
         }
     }
-    {
-        var material1 = try allocator.create(Dielectric);
-        material1.* = Dielectric.init(1.5);
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, 1, 0), 1.0, &material1.material);
-        try world.add(&s.hittable);
-    }
-    {
-        var material2 = try allocator.create(Lambertian);
-        material2.* = try Lambertian.initColor(allocator, Color.init(0.4, 0.2, 0.1));
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(-4, 1, 0), 1.0, &material2.material);
-        try world.add(&s.hittable);
-    }
-    {
-        var material3 = try allocator.create(Metal);
-        material3.* = Metal.init(Color.init(0.7, 0.6, 0.5), 0.0);
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(4, 1, 0), 1.0, &material3.material);
-        try world.add(&s.hittable);
-    }
+    const material1 = try makePtr(allocator, Dielectric, .{1.5});
+    try world.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, 1, 0), 1.0, &material1.material })).hittable);
+
+    const material2 = try makePtrColor(allocator, Lambertian, .{ allocator, Color.init(0.4, 0.2, 0.1) });
+    try world.add(&(try makePtr(allocator, Sphere, .{ Point3.init(-4, 1, 0), 1.0, &material2.material })).hittable);
+
+    const material3 = try makePtr(allocator, Metal, .{ Color.init(0.7, 0.6, 0.5), 0.0 });
+    try world.add(&(try makePtr(allocator, Sphere, .{ Point3.init(4, 1, 0), 1.0, &material3.material })).hittable);
 
     return world;
 }
@@ -156,8 +127,7 @@ fn randomScene(allocator: Allocator) !HittableList {
 fn twoSpheres(allocator: Allocator) !HittableList {
     var objects = HittableList.init(allocator);
 
-    var checker = try allocator.create(CheckerTexture);
-    checker.* = try CheckerTexture.initColors(allocator, Color.init(0.2, 0.3, 0.1), Color.init(0.9, 0.9, 0.9));
+    const checker = try makePtrColor(allocator, CheckerTexture, .{ allocator, Color.init(0.2, 0.3, 0.1), Color.init(0.9, 0.9, 0.9) });
 
     try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, -10, 0), 10, &(try makePtr(allocator, Lambertian, .{&checker.texture})).material })).hittable);
     try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, 10, 0), 10, &(try makePtr(allocator, Lambertian, .{&checker.texture})).material })).hittable);
@@ -168,22 +138,9 @@ fn twoSpheres(allocator: Allocator) !HittableList {
 fn twoPerlinSpheres(allocator: Allocator) !HittableList {
     var objects = HittableList.init(allocator);
 
-    var pertext = try allocator.create(NoiseTexture);
-    pertext.* = try NoiseTexture.init(allocator, 4);
-    {
-        var m = try allocator.create(Lambertian);
-        m.* = Lambertian.init(&pertext.texture);
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, -1000, 0), 1000, &m.material);
-        try objects.add(&s.hittable);
-    }
-    {
-        var m = try allocator.create(Lambertian);
-        m.* = Lambertian.init(&pertext.texture);
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, 2, 0), 2, &m.material);
-        try objects.add(&s.hittable);
-    }
+    const pertext = try makePtrErr(allocator, NoiseTexture, .{ allocator, 4 });
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, -1000, 0), 1000, &(try makePtr(allocator, Lambertian, .{&pertext.texture})).material })).hittable);
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, 2, 0), 2, &(try makePtr(allocator, Lambertian, .{&pertext.texture})).material })).hittable);
 
     return objects;
 }
@@ -198,28 +155,12 @@ fn earth(allocator: Allocator) !HittableList {
 fn simpleLight(allocator: Allocator) !HittableList {
     var objects = HittableList.init(allocator);
 
-    var pertext = try allocator.create(NoiseTexture);
-    pertext.* = try NoiseTexture.init(allocator, 4);
-    {
-        var m = try allocator.create(Lambertian);
-        m.* = Lambertian.init(&pertext.texture);
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, -1000, 0), 1000, &m.material);
-        try objects.add(&s.hittable);
-    }
-    {
-        var m = try allocator.create(Lambertian);
-        m.* = Lambertian.init(&pertext.texture);
-        var s = try allocator.create(Sphere);
-        s.* = Sphere.init(Point3.init(0, 2, 0), 2, &m.material);
-        try objects.add(&s.hittable);
-    }
+    const pertext = try makePtrErr(allocator, NoiseTexture, .{ allocator, 4 });
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, -1000, 0), 1000, &(try makePtr(allocator, Lambertian, .{&pertext.texture})).material })).hittable);
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(0, 2, 0), 2, &(try makePtr(allocator, Lambertian, .{&pertext.texture})).material })).hittable);
 
-    var difflight = try allocator.create(DiffuseLight);
-    difflight.* = try DiffuseLight.initColor(allocator, Color.init(4, 4, 4));
-    var r = try allocator.create(XyRect);
-    r.* = XyRect.init(3, 5, 1, 3, -2, &difflight.material);
-    try objects.add(&r.hittable);
+    const difflight = try makePtrColor(allocator, DiffuseLight, .{ allocator, Color.init(4, 4, 4) });
+    try objects.add(&(try makePtr(allocator, XyRect, .{ 3, 5, 1, 3, -2, &difflight.material })).hittable);
 
     return objects;
 }

@@ -10,6 +10,7 @@ const Hittable = hittable.Hittable;
 const HitRecord = hittable.HitRecord;
 const Ray = @import("./ray.zig").Ray;
 const rtweekend = @import("./rtweekend.zig");
+const makePtr = rtweekend.makePtr;
 const randomDouble = rtweekend.randomDouble;
 
 const texture = @import("./texture.zig");
@@ -61,9 +62,7 @@ pub const Lambertian = struct {
     }
 
     pub fn initColor(allocator: Allocator, a: Color) !Lambertian {
-        var t = try allocator.create(SolidColor);
-        t.* = SolidColor.init(a);
-        return Lambertian.init(&t.texture);
+        return Lambertian.init(&(try makePtr(allocator, SolidColor, .{a})).texture);
     }
 
     fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
@@ -153,9 +152,7 @@ pub const DiffuseLight = struct {
     }
 
     pub fn initColor(allocator: Allocator, c: Color) !DiffuseLight {
-        var t = try allocator.create(SolidColor);
-        t.* = SolidColor.init(c);
-        return DiffuseLight.init(&t.texture);
+        return DiffuseLight.init(&(try makePtr(allocator, SolidColor, .{c})).texture);
     }
 
     fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
@@ -187,9 +184,7 @@ pub const Isotropic = struct {
     }
 
     pub fn initColor(allocator: Allocator, c: Color) !Isotropic {
-        var t = try allocator.create(SolidColor);
-        t.* = SolidColor.init(c);
-        return Isotropic.init(&t.texture);
+        return Isotropic.init(&(try makePtr(allocator, SolidColor, .{c})).texture);
     }
 
     fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {

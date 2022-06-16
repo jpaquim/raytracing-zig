@@ -5,6 +5,7 @@ const Perlin = @import("./perlin.zig").Perlin;
 
 const rtweekend = @import("./rtweekend.zig");
 const clamp = rtweekend.clamp;
+const makePtr = rtweekend.makePtr;
 
 const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
@@ -63,11 +64,9 @@ pub const CheckerTexture = struct {
         };
     }
 
-    pub fn initColors(allocator: Allocator, c1: Color, c2: Color) !CheckerTexture {
-        var t1 = try allocator.create(SolidColor);
-        t1.* = SolidColor.init(c1);
-        var t2 = try allocator.create(SolidColor);
-        t2.* = SolidColor.init(c2);
+    pub fn initColor(allocator: Allocator, c1: Color, c2: Color) !CheckerTexture {
+        const t1 = try makePtr(allocator, SolidColor, .{c1});
+        const t2 = try makePtr(allocator, SolidColor, .{c2});
         return CheckerTexture.init(&t1.texture, &t2.texture);
     }
 
