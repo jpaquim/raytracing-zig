@@ -11,7 +11,7 @@ pub fn build(b: *std.build.Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const exe = b.addExecutable("raytracing-the-next-week", "src/main.zig");
+    const exe = b.addExecutable("raytracing-the-rest-of-your-life", "src/main.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
     exe.install();
