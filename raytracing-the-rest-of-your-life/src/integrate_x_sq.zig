@@ -5,7 +5,8 @@ const randomDouble = @import("./rtweekend.zig").randomDouble;
 const randomDouble2 = @import("./rtweekend.zig").randomDouble2;
 
 fn pdf(x: f64) f64 {
-    return 0.5 * x;
+    _ = x;
+    return 0.5;
 }
 
 pub fn main() anyerror!void {
@@ -15,7 +16,7 @@ pub fn main() anyerror!void {
 
     var i: usize = 0;
     while (i < N) : (i += 1) {
-        const x = sqrt(randomDouble2(0, 4));
+        const x = randomDouble2(0, 2);
         sum += x * x / pdf(x);
     }
     try stdout.print("I = {:.12}\n", .{sum / N});
