@@ -1,7 +1,12 @@
 const std = @import("std");
+const sqrt = std.math.sqrt;
 
 const randomDouble = @import("./rtweekend.zig").randomDouble;
 const randomDouble2 = @import("./rtweekend.zig").randomDouble2;
+
+fn pdf(x: f64) f64 {
+    return 0.5 * x;
+}
 
 pub fn main() anyerror!void {
     const stdout = std.io.getStdOut().writer();
@@ -10,8 +15,8 @@ pub fn main() anyerror!void {
 
     var i: usize = 0;
     while (i < N) : (i += 1) {
-        const x = randomDouble2(0, 2);
-        sum += x * x;
+        const x = sqrt(randomDouble2(0, 4));
+        sum += x * x / pdf(x);
     }
-    try stdout.print("I = {:.12}\n", .{2 * sum / N});
+    try stdout.print("I = {:.12}\n", .{sum / N});
 }
