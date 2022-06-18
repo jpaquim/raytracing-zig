@@ -172,3 +172,30 @@ pub const RotateY = struct {
         return self.hasbox;
     }
 };
+
+pub const FlipFace = struct {
+    hittable: Hittable,
+
+    ptr: *Hittable,
+
+    pub fn init(p: *Hittable) FlipFace {
+        return .{
+            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox },
+            .ptr = p,
+        };
+    }
+
+    fn hit(hittable: *const Hittable, r: Ray, t_min: f64, t_max: f64, rec: *HitRecord) bool {
+        const self = @fieldParentPtr(FlipFace, "hittable", hittable);
+        if (!self.ptr.hit(r, t_min, t_max, rec))
+            return false;
+
+        rec.front_face = !rec.front_face;
+        return true;
+    }
+
+    fn boundingBox(hittable: *const Hittable, time0: f64, time1: f64, output_box: *AABB) bool {
+        const self = @fieldParentPtr(FlipFace, "hittable", hittable);
+        return self.ptr.boundingBox(time0, time1, output_box);
+    }
+};

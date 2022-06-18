@@ -34,7 +34,7 @@ const reflect = vec3.reflect;
 const refract = vec3.refract;
 
 pub const Material = struct {
-    emittedFn: fn (self: *const Material, u: f64, v: f64, p: Point3) Color = emittedDefault,
+    emittedFn: fn (self: *const Material, rec: HitRecord, u: f64, v: f64, p: Point3) Color = emittedDefault,
     scatterFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool = scatterDefault,
     scatteringPdfFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, scattered: Ray) f64 = scatteringPdfDefault,
 
@@ -64,12 +64,13 @@ pub const Material = struct {
         return 0;
     }
 
-    pub fn emitted(self: *const Material, u: f64, v: f64, p: Point3) Color {
-        return self.emittedFn(self, u, v, p);
+    pub fn emitted(self: *const Material, rec: HitRecord, u: f64, v: f64, p: Point3) Color {
+        return self.emittedFn(self, rec, u, v, p);
     }
 
-    fn emittedDefault(self: *const Material, u: f64, v: f64, p: Point3) Color {
+    fn emittedDefault(self: *const Material, rec: HitRecord, u: f64, v: f64, p: Point3) Color {
         _ = self;
+        _ = rec;
         _ = u;
         _ = v;
         _ = p;
@@ -201,9 +202,12 @@ pub const DiffuseLight = struct {
         return false;
     }
 
-    fn emitted(material: *const Material, u: f64, v: f64, p: Point3) Color {
+    fn emitted(material: *const Material, rec: HitRecord, u: f64, v: f64, p: Point3) Color {
         const self = @fieldParentPtr(DiffuseLight, "material", material);
-        return self.emit.value(u, v, p);
+        if (rec.front_face)
+            return self.emit.value(u, v, p)
+        else
+            return Color.init(0, 0, 0);
     }
 };
 

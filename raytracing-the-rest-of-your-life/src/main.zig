@@ -15,6 +15,7 @@ const writeColor = @import("./color.zig").writeColor;
 const ConstantMedium = @import("./constant_medium.zig").ConstantMedium;
 
 const hittable = @import("./hittable.zig");
+const FlipFace = hittable.FlipFace;
 const Hittable = hittable.Hittable;
 const HitRecord = hittable.HitRecord;
 const RotateY = hittable.RotateY;
@@ -65,7 +66,7 @@ fn rayColor(r: Ray, background: Color, world: Hittable, depth: usize) Color {
         return background;
 
     var scattered: Ray = undefined;
-    const emitted = rec.mat_ptr.emitted(rec.u, rec.v, rec.p);
+    const emitted = rec.mat_ptr.emitted(rec, rec.u, rec.v, rec.p);
     var pdf: f64 = undefined;
     var albedo: Color = undefined;
 
@@ -102,7 +103,7 @@ fn cornellBox(allocator: Allocator) !HittableList {
 
     try objects.add(&(try makePtr(allocator, YzRect, .{ 0, 555, 0, 555, 555, &green.material })).hittable);
     try objects.add(&(try makePtr(allocator, YzRect, .{ 0, 555, 0, 555, 0, &red.material })).hittable);
-    try objects.add(&(try makePtr(allocator, XzRect, .{ 213, 343, 227, 332, 554, &light.material })).hittable);
+    try objects.add(&(try makePtr(allocator, FlipFace, .{&(try makePtr(allocator, XzRect, .{ 213, 343, 227, 332, 554, &light.material })).hittable})).hittable);
     try objects.add(&(try makePtr(allocator, XzRect, .{ 0, 555, 0, 555, 0, &white.material })).hittable);
     try objects.add(&(try makePtr(allocator, XzRect, .{ 0, 555, 0, 555, 555, &white.material })).hittable);
     try objects.add(&(try makePtr(allocator, XyRect, .{ 0, 555, 0, 555, 555, &white.material })).hittable);
