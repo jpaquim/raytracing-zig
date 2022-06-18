@@ -24,6 +24,7 @@ const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
 const dot = vec3.dot;
 const unitVector = vec3.unitVector;
+const randomInHemisphere = vec3.randomInHemisphere;
 const randomInUnitSphere = vec3.randomInUnitSphere;
 const randomUnitVector = vec3.randomUnitVector;
 const reflect = vec3.reflect;
@@ -91,12 +92,14 @@ pub const Lambertian = struct {
 
     fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool {
         const self = @fieldParentPtr(Lambertian, "material", material);
-        var scatter_direction = rec.normal.add(randomUnitVector());
-        if (scatter_direction.nearZero())
-            scatter_direction = rec.normal;
-        scattered.* = Ray.init(rec.p, unitVector(scatter_direction), r_in.time());
+        const direction = randomInHemisphere(rec.normal);
+        // var direction = rec.normal.add(randomUnitVector());
+        // if (direction.nearZero())
+        //     direction = rec.normal;
+        scattered.* = Ray.init(rec.p, unitVector(direction), r_in.time());
         albedo.* = self.albedo.value(rec.u, rec.v, rec.p);
-        pdf.* = dot(rec.normal, scattered.direction()) / pi;
+        pdf.* = 0.5 / pi;
+        // pdf.* = dot(rec.normal, scattered.direction()) / pi;
         return true;
     }
 
