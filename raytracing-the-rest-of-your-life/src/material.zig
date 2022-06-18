@@ -8,6 +8,9 @@ const sqrt = std.math.sqrt;
 const hittable = @import("./hittable.zig");
 const Hittable = hittable.Hittable;
 const HitRecord = hittable.HitRecord;
+
+const randomCosineDirection = @import("./cos_density.zig").randomCosineDirection;
+const ONB = @import("./onb.zig").ONB;
 const Ray = @import("./ray.zig").Ray;
 const rtweekend = @import("./rtweekend.zig");
 const makePtr = rtweekend.makePtr;
@@ -92,14 +95,12 @@ pub const Lambertian = struct {
 
     fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool {
         const self = @fieldParentPtr(Lambertian, "material", material);
-        const direction = randomInHemisphere(rec.normal);
-        // var direction = rec.normal.add(randomUnitVector());
-        // if (direction.nearZero())
-        //     direction = rec.normal;
+        var uvw = ONB.init();
+        uvw.buildFromW(rec.normal);
+        const direction = uvw.local(randomCosineDirection());
         scattered.* = Ray.init(rec.p, unitVector(direction), r_in.time());
         albedo.* = self.albedo.value(rec.u, rec.v, rec.p);
-        pdf.* = 0.5 / pi;
-        // pdf.* = dot(rec.normal, scattered.direction()) / pi;
+        pdf.* = dot(uvw.w(), scattered.direction()) / pi;
         return true;
     }
 

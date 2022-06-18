@@ -9,7 +9,7 @@ const vec3 = @import("./vec3.zig");
 const Vec3 = vec3.Vec3;
 const randomUnitVector = vec3.randomUnitVector;
 
-fn randomCosineDirection() Vec3 {
+pub fn randomCosineDirection() Vec3 {
     const r1 = randomDouble();
     const r2 = randomDouble();
     const z = sqrt(1 - r2);
