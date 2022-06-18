@@ -49,6 +49,7 @@ const vec3 = @import("./vec3.zig");
 const Color = vec3.Color;
 const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
+const dot = vec3.dot;
 const randomInHemisphere = vec3.randomInHemisphere;
 const randomInUnitSphere = vec3.randomInUnitSphere;
 const randomUnitVector = vec3.randomUnitVector;
@@ -70,6 +71,21 @@ fn rayColor(r: Ray, background: Color, world: Hittable, depth: usize) Color {
 
     if (!rec.mat_ptr.scatter(r, rec, &albedo, &scattered, &pdf))
         return emitted;
+    const on_light = Point3.init(randomDouble2(213, 343), 554, randomDouble2(227, 332));
+    var to_light = on_light.sub(rec.p);
+    const distance_squared = to_light.lengthSquared();
+    to_light = unitVector(to_light);
+
+    if (dot(to_light, rec.normal) < 0)
+        return emitted;
+
+    const light_area = (343 - 213) * (332 - 227);
+    const light_cosine = @fabs(to_light.y());
+    if (light_cosine < 0.000001)
+        return emitted;
+
+    pdf = distance_squared / (light_cosine * light_area);
+    scattered = Ray.init(rec.p, to_light, r.time());
 
     return emitted.add(albedo
         .mult(rayColor(scattered, background, world, depth - 1)
@@ -118,7 +134,7 @@ pub fn main() anyerror!void {
     const aspect_ratio = 1.0;
     const image_width = 600;
     const image_height = @floatToInt(usize, @intToFloat(f64, image_width) / aspect_ratio);
-    const samples_per_pixel = 100;
+    const samples_per_pixel = 10;
     const max_depth = 50;
 
     const world = try cornellBox(allocator);
