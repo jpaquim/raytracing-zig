@@ -11,6 +11,7 @@ const HitRecord = hittable.HitRecord;
 const Ray = @import("./ray.zig").Ray;
 const rtweekend = @import("./rtweekend.zig");
 const makePtr = rtweekend.makePtr;
+const pi = rtweekend.pi;
 const randomDouble = rtweekend.randomDouble;
 
 const texture = @import("./texture.zig");
@@ -30,10 +31,33 @@ const refract = vec3.refract;
 
 pub const Material = struct {
     emittedFn: fn (self: *const Material, u: f64, v: f64, p: Point3) Color = emittedDefault,
-    scatterFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool,
+    scatterFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool = scatterDefault,
+    scatteringPdfFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, scattered: Ray) f64 = scatteringPdfDefault,
 
-    pub fn scatter(self: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
-        return self.scatterFn(self, r_in, rec, attenuation, scattered);
+    pub fn scatter(self: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool {
+        return self.scatterFn(self, r_in, rec, albedo, scattered, pdf);
+    }
+
+    pub fn scatterDefault(self: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool {
+        _ = self;
+        _ = r_in;
+        _ = rec;
+        _ = albedo;
+        _ = scattered;
+        _ = pdf;
+        return false;
+    }
+
+    pub fn scatteringPdf(self: *const Material, r_in: Ray, rec: HitRecord, scattered: Ray) f64 {
+        return self.scatteringPdfFn(self, r_in, rec, scattered);
+    }
+
+    pub fn scatteringPdfDefault(self: *const Material, r_in: Ray, rec: HitRecord, scattered: Ray) f64 {
+        _ = self;
+        _ = r_in;
+        _ = rec;
+        _ = scattered;
+        return 0;
     }
 
     pub fn emitted(self: *const Material, u: f64, v: f64, p: Point3) Color {
@@ -56,7 +80,7 @@ pub const Lambertian = struct {
 
     pub fn init(a: *Texture) Lambertian {
         return .{
-            .material = .{ .scatterFn = scatter },
+            .material = .{ .scatterFn = scatter, .scatteringPdfFn = scatteringPdf },
             .albedo = a,
         };
     }
@@ -65,15 +89,22 @@ pub const Lambertian = struct {
         return Lambertian.init(&(try makePtr(allocator, SolidColor, .{a})).texture);
     }
 
-    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool {
         const self = @fieldParentPtr(Lambertian, "material", material);
         var scatter_direction = rec.normal.add(randomUnitVector());
         if (scatter_direction.nearZero())
             scatter_direction = rec.normal;
-
-        scattered.* = Ray.init(rec.p, scatter_direction, r_in.time());
-        attenuation.* = self.albedo.value(rec.u, rec.v, rec.p);
+        scattered.* = Ray.init(rec.p, unitVector(scatter_direction), r_in.time());
+        albedo.* = self.albedo.value(rec.u, rec.v, rec.p);
+        pdf.* = dot(rec.normal, scattered.direction()) / pi;
         return true;
+    }
+
+    fn scatteringPdf(material: *const Material, r_in: Ray, rec: HitRecord, scattered: Ray) f64 {
+        _ = material;
+        _ = r_in;
+        const cosine = dot(rec.normal, unitVector(scattered.direction()));
+        return if (cosine < 0) 0 else cosine / pi;
     }
 };
 
@@ -155,13 +186,14 @@ pub const DiffuseLight = struct {
         return DiffuseLight.init(&(try makePtr(allocator, SolidColor, .{c})).texture);
     }
 
-    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool {
         _ = material;
         _ = r_in;
         _ = r_in;
         _ = rec;
-        _ = attenuation;
+        _ = albedo;
         _ = scattered;
+        _ = pdf;
         return false;
     }
 

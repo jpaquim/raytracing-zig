@@ -64,13 +64,16 @@ fn rayColor(r: Ray, background: Color, world: Hittable, depth: usize) Color {
         return background;
 
     var scattered: Ray = undefined;
-    var attenuation: Color = undefined;
     const emitted = rec.mat_ptr.emitted(rec.u, rec.v, rec.p);
+    var pdf: f64 = undefined;
+    var albedo: Color = undefined;
 
-    if (!rec.mat_ptr.scatter(r, rec, &attenuation, &scattered))
+    if (!rec.mat_ptr.scatter(r, rec, &albedo, &scattered, &pdf))
         return emitted;
 
-    return emitted.add(attenuation.mult(rayColor(scattered, background, world, depth - 1)));
+    return emitted.add(albedo
+        .mult(rayColor(scattered, background, world, depth - 1)
+        .multScalar(rec.mat_ptr.scatteringPdf(r, rec, scattered) / pdf)));
 }
 
 fn cornellBox(allocator: Allocator) !HittableList {
