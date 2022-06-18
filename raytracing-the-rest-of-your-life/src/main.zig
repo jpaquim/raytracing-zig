@@ -31,6 +31,7 @@ const Material = material.Material;
 const MovingSphere = @import("./moving_sphere.zig").MovingSphere;
 const Ray = @import("./ray.zig").Ray;
 const Sphere = @import("./sphere.zig").Sphere;
+const CosinePDF = @import("./pdf.zig").CosinePDF;
 
 const rtweekend = @import("./rtweekend.zig");
 const infinity = rtweekend.infinity;
@@ -72,21 +73,9 @@ fn rayColor(r: Ray, background: Color, world: Hittable, depth: usize) Color {
 
     if (!rec.mat_ptr.scatter(r, rec, &albedo, &scattered, &pdf))
         return emitted;
-    const on_light = Point3.init(randomDouble2(213, 343), 554, randomDouble2(227, 332));
-    var to_light = on_light.sub(rec.p);
-    const distance_squared = to_light.lengthSquared();
-    to_light = unitVector(to_light);
-
-    if (dot(to_light, rec.normal) < 0)
-        return emitted;
-
-    const light_area = (343 - 213) * (332 - 227);
-    const light_cosine = @fabs(to_light.y());
-    if (light_cosine < 0.000001)
-        return emitted;
-
-    pdf = distance_squared / (light_cosine * light_area);
-    scattered = Ray.init(rec.p, to_light, r.time());
+    const p = CosinePDF.init(rec.normal);
+    scattered = Ray.init(rec.p, p.pdf.generate(), r.time());
+    pdf = p.pdf.value(scattered.direction());
 
     return emitted.add(albedo
         .mult(rayColor(scattered, background, world, depth - 1)
