@@ -10,6 +10,7 @@ const Hittable = h.Hittable;
 const HitRecord = h.HitRecord;
 
 const Ray = @import("./ray.zig").Ray;
+const randomInt = @import("./rtweekend.zig").randomInt;
 
 const vec3 = @import("./vec3.zig");
 const Point3 = vec3.Point3;
@@ -24,7 +25,7 @@ pub const HittableList = struct {
 
     pub fn init(allocator: Allocator) HittableList {
         return .{
-            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox },
+            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox, .pdfValueFn = pdfValue, .randomFn = random },
             .objects = std.ArrayList(*Hittable).init(allocator),
         };
     }
@@ -78,5 +79,22 @@ pub const HittableList = struct {
         }
 
         return true;
+    }
+
+    fn pdfValue(hittable: *const Hittable, origin: Point3, v: Vec3) f64 {
+        const self = @fieldParentPtr(HittableList, "hittable", hittable);
+        const weight = 1 / @intToFloat(f64, self.objects.items.len);
+        var sum: f64 = 0.0;
+
+        for (self.objects.items) |object| {
+            sum += weight * object.pdfValue(origin, v);
+        }
+
+        return sum;
+    }
+
+    fn random(hittable: *const Hittable, origin: Point3) Vec3 {
+        const self = @fieldParentPtr(HittableList, "hittable", hittable);
+        return self.objects.items[randomInt(0, self.objects.items.len - 1)].random(origin);
     }
 };
