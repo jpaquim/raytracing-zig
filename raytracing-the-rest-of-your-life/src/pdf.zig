@@ -1,11 +1,14 @@
 const std = @import("std");
 const sqrt = std.math.sqrt;
 
+const hittable = @import("./hittable.zig");
+const Hittable = hittable.Hittable;
 const ONB = @import("./onb.zig").ONB;
 const rtweekend = @import("./rtweekend.zig");
 const randomDouble = rtweekend.randomDouble;
 const pi = rtweekend.pi;
 const vec3 = @import("./vec3.zig");
+const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
 const dot = vec3.dot;
 const unitVector = vec3.unitVector;
@@ -67,5 +70,30 @@ pub const CosinePDF = struct {
     pub fn generate(pdf: *const PDF) Vec3 {
         const self = @fieldParentPtr(CosinePDF, "pdf", pdf);
         return self.uvw.local(randomCosineDirection());
+    }
+};
+
+pub const HittablePDF = struct {
+    pdf: PDF,
+
+    o: Point3,
+    ptr: *Hittable,
+
+    pub fn init(p: *Hittable, origin: Point3) HittablePDF {
+        return .{
+            .pdf = .{ .valueFn = value, .generateFn = generate },
+            .ptr = p,
+            .o = origin,
+        };
+    }
+
+    pub fn value(pdf: *const PDF, direction: Vec3) f64 {
+        const self = @fieldParentPtr(HittablePDF, "pdf", pdf);
+        return self.ptr.pdfValue(self.o, direction);
+    }
+
+    pub fn generate(pdf: *const PDF) Vec3 {
+        const self = @fieldParentPtr(HittablePDF, "pdf", pdf);
+        return self.ptr.random(self.o);
     }
 };

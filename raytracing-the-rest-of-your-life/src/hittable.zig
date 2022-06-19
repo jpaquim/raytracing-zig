@@ -31,6 +31,8 @@ pub const HitRecord = struct {
 pub const Hittable = struct {
     hitFn: fn (self: *const Hittable, r: Ray, t_min: f64, t_max: f64, rec: *HitRecord) bool,
     boundingBoxFn: fn (self: *const Hittable, time0: f64, time1: f64, output_box: *AABB) bool,
+    pdfValueFn: fn (self: *const Hittable, origin: Point3, v: Vec3) f64 = pdfValueDefault,
+    randomFn: fn (self: *const Hittable, origin: Point3) Vec3 = randomDefault,
 
     pub fn hit(self: *const Hittable, r: Ray, t_min: f64, t_max: f64, rec: *HitRecord) bool {
         return self.hitFn(self, r, t_min, t_max, rec);
@@ -38,6 +40,27 @@ pub const Hittable = struct {
 
     pub fn boundingBox(self: *const Hittable, time0: f64, time1: f64, output_box: *AABB) bool {
         return self.boundingBoxFn(self, time0, time1, output_box);
+    }
+
+    pub fn pdfValue(self: *const Hittable, origin: Point3, v: Vec3) f64 {
+        return self.pdfValueFn(self, origin, v);
+    }
+
+    fn pdfValueDefault(self: *const Hittable, origin: Point3, v: Vec3) f64 {
+        _ = self;
+        _ = origin;
+        _ = v;
+        return 0.0;
+    }
+
+    pub fn random(self: *const Hittable, origin: Point3) Vec3 {
+        return self.randomFn(self, origin);
+    }
+
+    fn randomDefault(self: *const Hittable, origin: Point3) Vec3 {
+        _ = self;
+        _ = origin;
+        return Vec3.init(1, 0, 0);
     }
 };
 

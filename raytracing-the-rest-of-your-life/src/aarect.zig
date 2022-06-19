@@ -5,10 +5,14 @@ const HitRecord = h.HitRecord;
 
 const Material = @import("./material.zig").Material;
 const Ray = @import("./ray.zig").Ray;
+const rtweekend = @import("./rtweekend.zig");
+const infinity = rtweekend.infinity;
+const randomDouble2 = rtweekend.randomDouble2;
 
 const vec3 = @import("./vec3.zig");
 const Point3 = vec3.Point3;
 const Vec3 = vec3.Vec3;
+const dot = vec3.dot;
 
 pub const XyRect = struct {
     hittable: Hittable,
@@ -75,7 +79,7 @@ pub const XzRect = struct {
 
     pub fn init(x0: f64, x1: f64, z0: f64, z1: f64, k: f64, mat: *Material) XzRect {
         return .{
-            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox },
+            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox, .pdfValueFn = pdfValue, .randomFn = random },
             .x0 = x0,
             .x1 = x1,
             .z0 = z0,
@@ -113,6 +117,25 @@ pub const XzRect = struct {
             Point3.init(self.x1, self.k + 0.0001, self.z1),
         );
         return true;
+    }
+
+    fn pdfValue(hittable: *const Hittable, origin: Point3, v: Vec3) f64 {
+        const self = @fieldParentPtr(XzRect, "hittable", hittable);
+        var rec: HitRecord = undefined;
+        if (!hittable.hit(Ray.init(origin, v, null), 0.001, infinity, &rec))
+            return 0.0;
+
+        const area = (self.x1 - self.x0) * (self.z1 - self.z0);
+        const distance_squared = rec.t * rec.t * v.lengthSquared();
+        const cosine = @fabs(dot(v, rec.normal) / v.length());
+
+        return distance_squared / (cosine * area);
+    }
+
+    fn random(hittable: *const Hittable, origin: Point3) Vec3 {
+        const self = @fieldParentPtr(XzRect, "hittable", hittable);
+        const random_point = Point3.init(randomDouble2(self.x0, self.x1), self.k, randomDouble2(self.z0, self.z1));
+        return random_point.sub(origin);
     }
 };
 

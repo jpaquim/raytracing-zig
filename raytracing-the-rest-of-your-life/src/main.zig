@@ -31,7 +31,9 @@ const Material = material.Material;
 const MovingSphere = @import("./moving_sphere.zig").MovingSphere;
 const Ray = @import("./ray.zig").Ray;
 const Sphere = @import("./sphere.zig").Sphere;
-const CosinePDF = @import("./pdf.zig").CosinePDF;
+const pdf_ = @import("./pdf.zig");
+const CosinePDF = pdf_.CosinePDF;
+const HittablePDF = pdf_.HittablePDF;
 
 const rtweekend = @import("./rtweekend.zig");
 const infinity = rtweekend.infinity;
@@ -57,7 +59,7 @@ const randomInUnitSphere = vec3.randomInUnitSphere;
 const randomUnitVector = vec3.randomUnitVector;
 const unitVector = vec3.unitVector;
 
-fn rayColor(r: Ray, background: Color, world: Hittable, depth: usize) Color {
+fn rayColor(r: Ray, background: Color, world: Hittable, lights: *Hittable, depth: usize) Color {
     var rec: HitRecord = undefined;
 
     if (depth <= 0)
@@ -73,12 +75,13 @@ fn rayColor(r: Ray, background: Color, world: Hittable, depth: usize) Color {
 
     if (!rec.mat_ptr.scatter(r, rec, &albedo, &scattered, &pdf))
         return emitted;
-    const p = CosinePDF.init(rec.normal);
-    scattered = Ray.init(rec.p, p.pdf.generate(), r.time());
-    pdf = p.pdf.value(scattered.direction());
+
+    const light_pdf = HittablePDF.init(lights, rec.p);
+    scattered = Ray.init(rec.p, light_pdf.pdf.generate(), r.time());
+    pdf = light_pdf.pdf.value(scattered.direction());
 
     return emitted.add(albedo
-        .mult(rayColor(scattered, background, world, depth - 1)
+        .mult(rayColor(scattered, background, world, lights, depth - 1)
         .multScalar(rec.mat_ptr.scatteringPdf(r, rec, scattered) / pdf)));
 }
 
@@ -128,6 +131,7 @@ pub fn main() anyerror!void {
     const max_depth = 50;
 
     const world = try cornellBox(allocator);
+    const lights = try makePtr(allocator, XzRect, .{ 213, 343, 227, 332, 554, @as(*Material, undefined) });
 
     const background = Color.init(0, 0, 0);
 
@@ -159,7 +163,7 @@ pub fn main() anyerror!void {
                 const u = (@intToFloat(f64, i) + randomDouble()) / (@intToFloat(f64, image_width) - 1);
                 const v = (@intToFloat(f64, j) + randomDouble()) / (@intToFloat(f64, image_height) - 1);
                 const r = cam.getRay(u, v);
-                pixel_color.addMut(rayColor(r, background, world.hittable, max_depth));
+                pixel_color.addMut(rayColor(r, background, world.hittable, &lights.hittable, max_depth));
             }
             try writeColor(stdout, pixel_color, samples_per_pixel);
         }
