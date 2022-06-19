@@ -108,12 +108,19 @@ fn cornellBox(allocator: Allocator) !HittableList {
     const aluminum = try makePtr(allocator, Metal, .{ Color.init(0.8, 0.85, 0.88), 0.0 });
     {
         const box = try makePtrErr(allocator, Box, .{ allocator, Point3.init(0, 0, 0), Point3.init(165, 330, 165), &aluminum.material });
+        // const box = try makePtrErr(allocator, Box, .{ allocator, Point3.init(0, 0, 0), Point3.init(165, 330, 165), &white.material });
         const rotate_y = try makePtr(allocator, RotateY, .{ &box.hittable, 15 });
         const translate = try makePtr(allocator, Translate, .{ &rotate_y.hittable, Vec3.init(265, 0, 295) });
         try objects.add(&translate.hittable);
     }
     const glass = try makePtr(allocator, Dielectric, .{1.5});
     try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(190, 90, 190), 90, &glass.material })).hittable);
+    // {
+    //     const box = try makePtrErr(allocator, Box, .{ allocator, Point3.init(0, 0, 0), Point3.init(165, 165, 165), &white.material });
+    //     const rotate_y = try makePtr(allocator, RotateY, .{ &box.hittable, -18 });
+    //     const translate = try makePtr(allocator, Translate, .{ &rotate_y.hittable, Vec3.init(130, 0, 65) });
+    //     try objects.add(&translate.hittable);
+    // }
 
     return objects;
 }
