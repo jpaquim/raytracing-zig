@@ -122,67 +122,71 @@ pub const Lambertian = struct {
     }
 };
 
-// pub const Metal = struct {
-//     material: Material,
+pub const Metal = struct {
+    material: Material,
 
-//     albedo: Color,
-//     fuzz: f64,
+    albedo: Color,
+    fuzz: f64,
 
-//     pub fn init(a: Color, f: f64) Metal {
-//         return .{
-//             .material = .{ .scatterFn = scatter },
-//             .albedo = a,
-//             .fuzz = if (f < 1) f else 1,
-//         };
-//     }
+    pub fn init(a: Color, f: f64) Metal {
+        return .{
+            .material = .{ .scatterFn = scatter },
+            .albedo = a,
+            .fuzz = if (f < 1) f else 1,
+        };
+    }
 
-//     fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
-//         const self = @fieldParentPtr(Metal, "material", material);
-//         const reflected = reflect(unitVector(r_in.direction()), rec.normal);
-//         scattered.* = Ray.init(rec.p, reflected.add(randomInUnitSphere().multScalar(self.fuzz)), r_in.time());
-//         attenuation.* = self.albedo;
-//         return dot(scattered.direction(), rec.normal) > 0;
-//     }
-// };
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, srec: *ScatterRecord) bool {
+        const self = @fieldParentPtr(Metal, "material", material);
+        const reflected = reflect(unitVector(r_in.direction()), rec.normal);
+        srec.specular_ray = Ray.init(rec.p, reflected.add(randomInUnitSphere().multScalar(self.fuzz)), r_in.time());
+        srec.attenuation = self.albedo;
+        srec.is_specular = true;
+        srec.pdf_ptr = @as(*Material, undefined);
+        return true;
+    }
+};
 
-// pub const Dielectric = struct {
-//     material: Material,
+pub const Dielectric = struct {
+    material: Material,
 
-//     ir: f64,
+    ir: f64,
 
-//     pub fn init(index_of_refraction: f64) Dielectric {
-//         return .{
-//             .material = .{ .scatterFn = scatter },
-//             .ir = index_of_refraction,
-//         };
-//     }
+    pub fn init(index_of_refraction: f64) Dielectric {
+        return .{
+            .material = .{ .scatterFn = scatter },
+            .ir = index_of_refraction,
+        };
+    }
 
-//     fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, attenuation: *Color, scattered: *Ray) bool {
-//         const self = @fieldParentPtr(Dielectric, "material", material);
-//         attenuation.* = Color.init(1, 1, 1);
-//         const refraction_ratio = if (rec.front_face) 1.0 / self.ir else self.ir;
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, srec: *ScatterRecord) bool {
+        const self = @fieldParentPtr(Dielectric, "material", material);
+        srec.is_specular = true;
+        srec.pdf_ptr = @as(*Material, undefined);
+        srec.attenuation = Color.init(1, 1, 1);
+        const refraction_ratio = if (rec.front_face) 1.0 / self.ir else self.ir;
 
-//         const unit_direction = unitVector(r_in.direction());
-//         const cos_theta = min(dot(unit_direction.negate(), rec.normal), 1.0);
-//         const sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+        const unit_direction = unitVector(r_in.direction());
+        const cos_theta = min(dot(unit_direction.negate(), rec.normal), 1.0);
+        const sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
-//         const cannot_refract = refraction_ratio * sin_theta > 1.0;
+        const cannot_refract = refraction_ratio * sin_theta > 1.0;
 
-//         const direction = if (cannot_refract or reflectance(cos_theta, refraction_ratio) > randomDouble())
-//             reflect(unit_direction, rec.normal)
-//         else
-//             refract(unit_direction, rec.normal, refraction_ratio);
+        const direction = if (cannot_refract or reflectance(cos_theta, refraction_ratio) > randomDouble())
+            reflect(unit_direction, rec.normal)
+        else
+            refract(unit_direction, rec.normal, refraction_ratio);
 
-//         scattered.* = Ray.init(rec.p, direction, r_in.time());
-//         return true;
-//     }
+        srec.specular_ray = Ray.init(rec.p, direction, r_in.time());
+        return true;
+    }
 
-//     fn reflectance(cosine: f64, ref_idx: f64) f64 {
-//         var r0 = (1 - ref_idx) / (1 + ref_idx);
-//         r0 = r0 * r0;
-//         return r0 + (1 - r0) * pow(f64, 1 - cosine, 5);
-//     }
-// };
+    fn reflectance(cosine: f64, ref_idx: f64) f64 {
+        var r0 = (1 - ref_idx) / (1 + ref_idx);
+        r0 = r0 * r0;
+        return r0 + (1 - r0) * pow(f64, 1 - cosine, 5);
+    }
+};
 
 pub const DiffuseLight = struct {
     material: Material,

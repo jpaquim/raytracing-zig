@@ -23,11 +23,11 @@ const Translate = hittable.Translate;
 
 const HittableList = @import("./hittable_list.zig").HittableList;
 const material = @import("./material.zig");
-// const Dielectric = material.Dielectric;
+const Dielectric = material.Dielectric;
 const DiffuseLight = material.DiffuseLight;
 const Lambertian = material.Lambertian;
 const Material = material.Material;
-// const Metal = material.Metal;
+const Metal = material.Metal;
 const ScatterRecord = material.ScatterRecord;
 const MovingSphere = @import("./moving_sphere.zig").MovingSphere;
 const Ray = @import("./ray.zig").Ray;
@@ -75,6 +75,10 @@ fn rayColor(allocator: Allocator, r: Ray, background: Color, world: Hittable, li
     if (!rec.mat_ptr.scatter(r, rec, &srec))
         return emitted;
 
+    if (srec.is_specular) {
+        return srec.attenuation.mult(try rayColor(allocator, srec.specular_ray, background, world, lights, depth - 1));
+    }
+
     const light_ptr = try makePtr(allocator, HittablePDF, .{ lights, rec.p });
     const p = MixturePDF.init(&light_ptr.pdf, srec.pdf_ptr);
 
@@ -97,22 +101,19 @@ fn cornellBox(allocator: Allocator) !HittableList {
     try objects.add(&(try makePtr(allocator, YzRect, .{ 0, 555, 0, 555, 555, &green.material })).hittable);
     try objects.add(&(try makePtr(allocator, YzRect, .{ 0, 555, 0, 555, 0, &red.material })).hittable);
     try objects.add(&(try makePtr(allocator, FlipFace, .{&(try makePtr(allocator, XzRect, .{ 213, 343, 227, 332, 554, &light.material })).hittable})).hittable);
-    try objects.add(&(try makePtr(allocator, XzRect, .{ 0, 555, 0, 555, 0, &white.material })).hittable);
     try objects.add(&(try makePtr(allocator, XzRect, .{ 0, 555, 0, 555, 555, &white.material })).hittable);
+    try objects.add(&(try makePtr(allocator, XzRect, .{ 0, 555, 0, 555, 0, &white.material })).hittable);
     try objects.add(&(try makePtr(allocator, XyRect, .{ 0, 555, 0, 555, 555, &white.material })).hittable);
 
+    const aluminum = try makePtr(allocator, Metal, .{ Color.init(0.8, 0.85, 0.88), 0.0 });
     {
-        const box = try makePtrErr(allocator, Box, .{ allocator, Point3.init(0, 0, 0), Point3.init(165, 330, 165), &white.material });
+        const box = try makePtrErr(allocator, Box, .{ allocator, Point3.init(0, 0, 0), Point3.init(165, 330, 165), &aluminum.material });
         const rotate_y = try makePtr(allocator, RotateY, .{ &box.hittable, 15 });
         const translate = try makePtr(allocator, Translate, .{ &rotate_y.hittable, Vec3.init(265, 0, 295) });
         try objects.add(&translate.hittable);
     }
-    {
-        const box = try makePtrErr(allocator, Box, .{ allocator, Point3.init(0, 0, 0), Point3.init(165, 165, 165), &white.material });
-        const rotate_y = try makePtr(allocator, RotateY, .{ &box.hittable, -18 });
-        const translate = try makePtr(allocator, Translate, .{ &rotate_y.hittable, Vec3.init(130, 0, 65) });
-        try objects.add(&translate.hittable);
-    }
+    const glass = try makePtr(allocator, Dielectric, .{1.5});
+    try objects.add(&(try makePtr(allocator, Sphere, .{ Point3.init(190, 90, 190), 90, &glass.material })).hittable);
 
     return objects;
 }
