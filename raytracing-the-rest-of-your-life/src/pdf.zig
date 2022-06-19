@@ -97,3 +97,29 @@ pub const HittablePDF = struct {
         return self.ptr.random(self.o);
     }
 };
+
+pub const MixturePDF = struct {
+    pdf: PDF,
+
+    p: [2]*PDF,
+
+    pub fn init(p0: *PDF, p1: *PDF) MixturePDF {
+        return .{
+            .pdf = .{ .valueFn = value, .generateFn = generate },
+            .p = .{ p0, p1 },
+        };
+    }
+
+    pub fn value(pdf: *const PDF, direction: Vec3) f64 {
+        const self = @fieldParentPtr(MixturePDF, "pdf", pdf);
+        return 0.5 * self.p[0].value(direction) + 0.5 * self.p[1].value(direction);
+    }
+
+    pub fn generate(pdf: *const PDF) Vec3 {
+        const self = @fieldParentPtr(MixturePDF, "pdf", pdf);
+        if (randomDouble() < 0.5)
+            return self.p[0].generate()
+        else
+            return self.p[1].generate();
+    }
+};

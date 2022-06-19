@@ -34,6 +34,7 @@ const Sphere = @import("./sphere.zig").Sphere;
 const pdf_ = @import("./pdf.zig");
 const CosinePDF = pdf_.CosinePDF;
 const HittablePDF = pdf_.HittablePDF;
+const MixturePDF = pdf_.MixturePDF;
 
 const rtweekend = @import("./rtweekend.zig");
 const infinity = rtweekend.infinity;
@@ -59,7 +60,7 @@ const randomInUnitSphere = vec3.randomInUnitSphere;
 const randomUnitVector = vec3.randomUnitVector;
 const unitVector = vec3.unitVector;
 
-fn rayColor(r: Ray, background: Color, world: Hittable, lights: *Hittable, depth: usize) Color {
+fn rayColor(allocator: Allocator, r: Ray, background: Color, world: Hittable, lights: *Hittable, depth: usize) error{OutOfMemory}!Color {
     var rec: HitRecord = undefined;
 
     if (depth <= 0)
@@ -72,16 +73,17 @@ fn rayColor(r: Ray, background: Color, world: Hittable, lights: *Hittable, depth
     const emitted = rec.mat_ptr.emitted(rec, rec.u, rec.v, rec.p);
     var pdf: f64 = undefined;
     var albedo: Color = undefined;
-
     if (!rec.mat_ptr.scatter(r, rec, &albedo, &scattered, &pdf))
         return emitted;
+    const p0 = try makePtr(allocator, HittablePDF, .{ lights, rec.p });
+    const p1 = try makePtr(allocator, CosinePDF, .{rec.normal});
+    const mixed_pdf = MixturePDF.init(&p0.pdf, &p1.pdf);
 
-    const light_pdf = HittablePDF.init(lights, rec.p);
-    scattered = Ray.init(rec.p, light_pdf.pdf.generate(), r.time());
-    pdf = light_pdf.pdf.value(scattered.direction());
+    scattered = Ray.init(rec.p, mixed_pdf.pdf.generate(), r.time());
+    pdf = mixed_pdf.pdf.value(scattered.direction());
 
     return emitted.add(albedo
-        .mult(rayColor(scattered, background, world, lights, depth - 1)
+        .mult((try rayColor(allocator, scattered, background, world, lights, depth - 1))
         .multScalar(rec.mat_ptr.scatteringPdf(r, rec, scattered) / pdf)));
 }
 
@@ -127,7 +129,7 @@ pub fn main() anyerror!void {
     const aspect_ratio = 1.0;
     const image_width = 600;
     const image_height = @floatToInt(usize, @intToFloat(f64, image_width) / aspect_ratio);
-    const samples_per_pixel = 10;
+    const samples_per_pixel = 1000;
     const max_depth = 50;
 
     const world = try cornellBox(allocator);
@@ -163,7 +165,7 @@ pub fn main() anyerror!void {
                 const u = (@intToFloat(f64, i) + randomDouble()) / (@intToFloat(f64, image_width) - 1);
                 const v = (@intToFloat(f64, j) + randomDouble()) / (@intToFloat(f64, image_height) - 1);
                 const r = cam.getRay(u, v);
-                pixel_color.addMut(rayColor(r, background, world.hittable, &lights.hittable, max_depth));
+                pixel_color.addMut(try rayColor(allocator, r, background, world.hittable, &lights.hittable, max_depth));
             }
             try writeColor(stdout, pixel_color, samples_per_pixel);
         }
