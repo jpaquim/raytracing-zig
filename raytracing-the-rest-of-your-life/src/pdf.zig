@@ -123,3 +123,15 @@ pub const MixturePDF = struct {
             return self.p[1].generate();
     }
 };
+
+pub fn randomToSphere(radius: f64, distance_squared: f64) Vec3 {
+    const r1 = randomDouble();
+    const r2 = randomDouble();
+    const z = 1 + r2 * (sqrt(1 - radius * radius / distance_squared) - 1);
+
+    const phi = 2 * pi * r1;
+    const x = @cos(phi) * sqrt(1 - z * z);
+    const y = @sin(phi) * sqrt(1 - z * z);
+
+    return Vec3.init(x, y, z);
+}

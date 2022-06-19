@@ -9,8 +9,11 @@ const Hittable = h.Hittable;
 const HitRecord = h.HitRecord;
 
 const Material = @import("./material.zig").Material;
+const ONB = @import("./onb.zig").ONB;
+const randomToSphere = @import("./pdf.zig").randomToSphere;
 const Ray = @import("./ray.zig").Ray;
 const rtweekend = @import("./rtweekend.zig");
+const infinity = rtweekend.infinity;
 const pi = rtweekend.pi;
 
 const vec3 = @import("./vec3.zig");
@@ -27,7 +30,7 @@ pub const Sphere = struct {
 
     pub fn init(cen: Point3, r: f64, m: *Material) Sphere {
         return .{
-            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox },
+            .hittable = .{ .hitFn = hit, .boundingBoxFn = boundingBox, .pdfValueFn = pdfValue, .randomFn = random },
             .center = cen,
             .radius = r,
             .mat_ptr = m,
@@ -75,6 +78,27 @@ pub const Sphere = struct {
             self.center.add(Vec3.init(self.radius, self.radius, self.radius)),
         );
         return true;
+    }
+
+    fn pdfValue(hittable: *const Hittable, origin: Point3, v: Vec3) f64 {
+        const self = @fieldParentPtr(Sphere, "hittable", hittable);
+        var rec: HitRecord = undefined;
+        if (!hittable.hit(Ray.init(origin, v, null), 0.001, infinity, &rec))
+            return 0;
+
+        const cos_theta_max = sqrt(1 - self.radius * self.radius / self.center.sub(origin).lengthSquared());
+        const solid_angle = 2 * pi * (1 - cos_theta_max);
+
+        return 1 / solid_angle;
+    }
+
+    fn random(hittable: *const Hittable, origin: Point3) Vec3 {
+        const self = @fieldParentPtr(Sphere, "hittable", hittable);
+        const direction = self.center.sub(origin);
+        const distance_squared = direction.lengthSquared();
+        var uvw = ONB.init();
+        uvw.buildFromW(direction);
+        return uvw.local(randomToSphere(self.radius, distance_squared));
     }
 
     fn getSphereUV(p: Point3, u: *f64, v: *f64) void {
