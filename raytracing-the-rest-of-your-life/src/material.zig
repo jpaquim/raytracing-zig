@@ -11,6 +11,9 @@ const HitRecord = hittable.HitRecord;
 
 const randomCosineDirection = @import("./cos_density.zig").randomCosineDirection;
 const ONB = @import("./onb.zig").ONB;
+const pdf = @import("./pdf.zig");
+const CosinePDF = pdf.CosinePDF;
+const PDF = pdf.PDF;
 const Ray = @import("./ray.zig").Ray;
 const rtweekend = @import("./rtweekend.zig");
 const makePtr = rtweekend.makePtr;
@@ -33,22 +36,27 @@ const randomUnitVector = vec3.randomUnitVector;
 const reflect = vec3.reflect;
 const refract = vec3.refract;
 
+pub const ScatterRecord = struct {
+    specular_ray: Ray,
+    is_specular: bool,
+    attenuation: Color,
+    pdf_ptr: *PDF,
+};
+
 pub const Material = struct {
-    emittedFn: fn (self: *const Material, rec: HitRecord, u: f64, v: f64, p: Point3) Color = emittedDefault,
-    scatterFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool = scatterDefault,
+    emittedFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, u: f64, v: f64, p: Point3) Color = emittedDefault,
+    scatterFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, srec: *ScatterRecord) bool = scatterDefault,
     scatteringPdfFn: fn (self: *const Material, r_in: Ray, rec: HitRecord, scattered: Ray) f64 = scatteringPdfDefault,
 
-    pub fn scatter(self: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool {
-        return self.scatterFn(self, r_in, rec, albedo, scattered, pdf);
+    pub fn scatter(self: *const Material, r_in: Ray, rec: HitRecord, srec: *ScatterRecord) bool {
+        return self.scatterFn(self, r_in, rec, srec);
     }
 
-    pub fn scatterDefault(self: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool {
+    pub fn scatterDefault(self: *const Material, r_in: Ray, rec: HitRecord, srec: *ScatterRecord) bool {
         _ = self;
         _ = r_in;
         _ = rec;
-        _ = albedo;
-        _ = scattered;
-        _ = pdf;
+        _ = srec;
         return false;
     }
 
@@ -64,12 +72,13 @@ pub const Material = struct {
         return 0;
     }
 
-    pub fn emitted(self: *const Material, rec: HitRecord, u: f64, v: f64, p: Point3) Color {
-        return self.emittedFn(self, rec, u, v, p);
+    pub fn emitted(self: *const Material, r_in: Ray, rec: HitRecord, u: f64, v: f64, p: Point3) Color {
+        return self.emittedFn(self, r_in, rec, u, v, p);
     }
 
-    fn emittedDefault(self: *const Material, rec: HitRecord, u: f64, v: f64, p: Point3) Color {
+    fn emittedDefault(self: *const Material, r_in: Ray, rec: HitRecord, u: f64, v: f64, p: Point3) Color {
         _ = self;
+        _ = r_in;
         _ = rec;
         _ = u;
         _ = v;
@@ -80,28 +89,28 @@ pub const Material = struct {
 
 pub const Lambertian = struct {
     material: Material,
+    allocator: Allocator,
 
     albedo: *Texture,
 
-    pub fn init(a: *Texture) Lambertian {
+    pub fn init(allocator: Allocator, a: *Texture) Lambertian {
         return .{
             .material = .{ .scatterFn = scatter, .scatteringPdfFn = scatteringPdf },
+            .allocator = allocator,
             .albedo = a,
         };
     }
 
     pub fn initColor(allocator: Allocator, a: Color) !Lambertian {
-        return Lambertian.init(&(try makePtr(allocator, SolidColor, .{a})).texture);
+        return Lambertian.init(allocator, &(try makePtr(allocator, SolidColor, .{a})).texture);
     }
 
-    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool {
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, srec: *ScatterRecord) bool {
+        _ = r_in;
         const self = @fieldParentPtr(Lambertian, "material", material);
-        var uvw = ONB.init();
-        uvw.buildFromW(rec.normal);
-        const direction = uvw.local(randomCosineDirection());
-        scattered.* = Ray.init(rec.p, unitVector(direction), r_in.time());
-        albedo.* = self.albedo.value(rec.u, rec.v, rec.p);
-        pdf.* = dot(uvw.w(), scattered.direction()) / pi;
+        srec.is_specular = false;
+        srec.attenuation = self.albedo.value(rec.u, rec.v, rec.p);
+        srec.pdf_ptr = &(makePtr(self.allocator, CosinePDF, .{rec.normal}) catch std.process.exit(1)).pdf;
         return true;
     }
 
@@ -191,18 +200,17 @@ pub const DiffuseLight = struct {
         return DiffuseLight.init(&(try makePtr(allocator, SolidColor, .{c})).texture);
     }
 
-    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, albedo: *Color, scattered: *Ray, pdf: *f64) bool {
+    fn scatter(material: *const Material, r_in: Ray, rec: HitRecord, srec: *ScatterRecord) bool {
         _ = material;
         _ = r_in;
         _ = r_in;
         _ = rec;
-        _ = albedo;
-        _ = scattered;
-        _ = pdf;
+        _ = srec;
         return false;
     }
 
-    fn emitted(material: *const Material, rec: HitRecord, u: f64, v: f64, p: Point3) Color {
+    fn emitted(material: *const Material, r_in: Ray, rec: HitRecord, u: f64, v: f64, p: Point3) Color {
+        _ = r_in;
         const self = @fieldParentPtr(DiffuseLight, "material", material);
         if (rec.front_face)
             return self.emit.value(u, v, p)

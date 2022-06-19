@@ -28,6 +28,7 @@ const DiffuseLight = material.DiffuseLight;
 const Lambertian = material.Lambertian;
 const Material = material.Material;
 // const Metal = material.Metal;
+const ScatterRecord = material.ScatterRecord;
 const MovingSphere = @import("./moving_sphere.zig").MovingSphere;
 const Ray = @import("./ray.zig").Ray;
 const Sphere = @import("./sphere.zig").Sphere;
@@ -69,20 +70,18 @@ fn rayColor(allocator: Allocator, r: Ray, background: Color, world: Hittable, li
     if (!world.hit(r, 0.001, infinity, &rec))
         return background;
 
-    var scattered: Ray = undefined;
-    const emitted = rec.mat_ptr.emitted(rec, rec.u, rec.v, rec.p);
-    var pdf: f64 = undefined;
-    var albedo: Color = undefined;
-    if (!rec.mat_ptr.scatter(r, rec, &albedo, &scattered, &pdf))
+    var srec: ScatterRecord = undefined;
+    const emitted = rec.mat_ptr.emitted(r, rec, rec.u, rec.v, rec.p);
+    if (!rec.mat_ptr.scatter(r, rec, &srec))
         return emitted;
-    const p0 = try makePtr(allocator, HittablePDF, .{ lights, rec.p });
-    const p1 = try makePtr(allocator, CosinePDF, .{rec.normal});
-    const mixed_pdf = MixturePDF.init(&p0.pdf, &p1.pdf);
 
-    scattered = Ray.init(rec.p, mixed_pdf.pdf.generate(), r.time());
-    pdf = mixed_pdf.pdf.value(scattered.direction());
+    const light_ptr = try makePtr(allocator, HittablePDF, .{ lights, rec.p });
+    const p = MixturePDF.init(&light_ptr.pdf, srec.pdf_ptr);
 
-    return emitted.add(albedo
+    const scattered = Ray.init(rec.p, p.pdf.generate(), r.time());
+    const pdf = p.pdf.value(scattered.direction());
+
+    return emitted.add(srec.attenuation
         .mult((try rayColor(allocator, scattered, background, world, lights, depth - 1))
         .multScalar(rec.mat_ptr.scatteringPdf(r, rec, scattered) / pdf)));
 }
@@ -133,7 +132,9 @@ pub fn main() anyerror!void {
     const max_depth = 50;
 
     const world = try cornellBox(allocator);
-    const lights = try makePtr(allocator, XzRect, .{ 213, 343, 227, 332, 554, @as(*Material, undefined) });
+    var lights = HittableList.init(allocator);
+    try lights.add(&(try makePtr(allocator, XzRect, .{ 213, 343, 227, 332, 554, @as(*Material, undefined) })).hittable);
+    try lights.add(&(try makePtr(allocator, Sphere, .{ Point3.init(190, 90, 190), 90, @as(*Material, undefined) })).hittable);
 
     const background = Color.init(0, 0, 0);
 
