@@ -9,6 +9,10 @@ pub fn writeColor(out: std.fs.File.Writer, pixel_color: Color, samples_per_pixel
     var g = pixel_color.y();
     var b = pixel_color.z();
 
+    if (r != r) r = 0.0;
+    if (g != g) g = 0.0;
+    if (b != b) b = 0.0;
+
     const scale = 1.0 / @intToFloat(f64, samples_per_pixel);
     r = sqrt(scale * r);
     g = sqrt(scale * g);
